@@ -31,8 +31,7 @@ namespace GSP {
         if (lex->token()->type() == ORDER) {
             lex->next();
             if (lex->token()->type() != BY) {
-                e->_code = ParseException::FAIL;
-                e->_detail = "EXPRECT BY";
+                e->SetFail(BY, lex);
                 return nullptr;
             }
             lex->next();
@@ -247,8 +246,7 @@ namespace GSP {
                 return nullptr;
             }
             if (lex->token()->type() != RPAREN) {
-                e->_code = ParseException::FAIL;
-                e->_detail = "EXPECT ')'";
+                e->SetFail(RPAREN, lex);
                 return nullptr;
             }
             lex->next();    // skip ')'
@@ -264,7 +262,7 @@ namespace GSP {
             }
         }
         else {
-            e->_code = ParseException::FAIL;
+            e->SetFail({SELECT, LPAREN}, lex);
             return nullptr;
         }
         return primary;
@@ -311,7 +309,7 @@ namespace GSP {
 
     AstCommonTableExpr *parse_cte(ILex *lex, ParseException *e) {
         if (lex->token()->type() != ID) {
-            e->_code = ParseException::FAIL;
+            e->SetFail(ID, lex);
             return nullptr;
         }
         AstId *name = parse_id(lex, e);
@@ -333,8 +331,7 @@ namespace GSP {
         }
         if (lex->token()->type() != AS ) {
             delete (cte);
-            e->_code = ParseException::FAIL;
-            e->_detail = "EXPECT AS";
+            e->SetFail(AS, lex);
             return nullptr;
         }
         lex->next();
@@ -379,8 +376,7 @@ namespace GSP {
         if (lex->token()->type() == AS) {
             lex->next();
             if (lex->token()->type() != ID) {
-                e->_code = ParseException::FAIL;
-                e->_detail = "EXPECT identifier";
+                e->SetFail(ID, lex);
                 delete (proj);
                 return nullptr;
             }

@@ -109,8 +109,7 @@ namespace GSP {
             }
         }
         if (lex->token()->type() != JOIN) {
-            e->_code = ParseException::FAIL;
-            e->_detail = "EXPRECT JOIN";
+            e->SetFail(JOIN, lex);
             return join_type;
         }
         lex->next();
@@ -149,8 +148,7 @@ namespace GSP {
                 tr->SetRight(right);
                 if (lex->token()->type() != ON) {
                     delete (tr);
-                    e->_code = ParseException::FAIL;
-                    e->_detail = "EXPECT ON OR USING";
+                    e->SetFail(ON, lex);
                     return nullptr;
                 }
                 lex->next();
@@ -171,7 +169,7 @@ namespace GSP {
             auto lex_c = lex->clone();
             AstSelectStmt *stmt = parse_select_stmt(lex_c, e);
             AstTableRef *tr = nullptr;
-            if (e->_code == ParseException::SUCCESS || lex_c->token()->type() == RPAREN) {
+            if (e->_code == ParseException::SUCCESS && lex_c->token()->type() == RPAREN) {
                 lex_c->next();
                 lex->recover(lex_c);
                 delete (lex_c);
@@ -195,8 +193,7 @@ namespace GSP {
                     if (lex->token()->type() != RPAREN) {
                         delete (stmt);
                         delete (id);
-                        e->_code = ParseException::FAIL;
-                        e->_detail = "EXPECT ')'";
+                        e->SetFail(RPAREN, lex);
                         return nullptr;
                     }
                     lex->next();
@@ -207,16 +204,14 @@ namespace GSP {
                 return tr;
             } else {        /* backtrack */
                 delete (lex_c);
-                e->_code = ParseException::SUCCESS;
-                e->_detail = "";
+                e->_code = ParseException::SUCCESS; e->_detail = "";
                 tr = parse_tabelref(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
                     return nullptr;
                 }
                 if (lex->token()->type() != RPAREN) {
                     delete (tr);
-                    e->_code = ParseException::FAIL;
-                    e->_detail = "EXPECT RPAREN";
+                    e->SetFail(RPAREN, lex);
                     return nullptr;
                 }
                 lex->next();

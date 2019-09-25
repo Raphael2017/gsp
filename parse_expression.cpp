@@ -108,7 +108,7 @@ namespace GSP {
             }
             else {
                 delete (primary);
-                e->_code = ParseException::FAIL;
+                e->SetFail({NOT, TRUE, FALSE, UNKNOWN}, lex);
                 return nullptr;
             }
             AstSearchCondition *t = primary;
@@ -168,8 +168,7 @@ namespace GSP {
         if (lex->token()->type() == EXISTS) {
             lex->next();
             if (lex->token()->type() != LPAREN) {
-                e->_code = ParseException::FAIL;
-                e->_detail = "EXPECT '('";
+                e->SetFail(LPAREN, lex);
                 return nullptr;
             }
             lex->next();
@@ -181,8 +180,9 @@ namespace GSP {
             r->SetExprType(AstSearchCondition::EXISTS);
             r->SetExist(stmt);
             if (lex->token()->type() != RPAREN) {
-                e->_code = ParseException::FAIL;
-                e->_detail = "EXPECT ')'";
+                e->SetFail(RPAREN, lex);
+                delete (r);
+                return nullptr;
             }
             lex->next();
             return r;
@@ -201,8 +201,7 @@ namespace GSP {
                     lex->next();
                     expr_type = mk_expr_type(tk1, all_some_any);
                     if (lex->token()->type() != LPAREN) {
-                        e->_code = ParseException::FAIL;
-                        e->_detail = "EXPECT '('";
+                        e->SetFail(LPAREN, lex);
                         delete (row_expr);
                         return nullptr;
                     }
@@ -214,8 +213,7 @@ namespace GSP {
                     if (lex->token()->type() != RPAREN) {
                         delete (row_expr);
                         delete (stmt);
-                        e->_code = ParseException::FAIL;
-                        e->_detail = "EXPECT ')'";
+                        e->SetFail(RPAREN, lex);
                         return nullptr;
                     }
                     AstSearchCondition *r = new AstSearchCondition;
@@ -247,8 +245,7 @@ namespace GSP {
                     has_not = true;
                 }
                 if (lex->token()->type() != NULLX) {
-                    e->_code = ParseException::FAIL;
-                    e->_detail = "EXPECT NULL";
+                    e->SetFail(NULLX, lex);
                     delete (row_expr);
                     return nullptr;
                 }
@@ -275,8 +272,7 @@ namespace GSP {
                     }
                     if (lex->token()->type() != AND) {
                         delete (row_expr);
-                        e->_code = ParseException::FAIL;
-                        e->_detail = "EXPECT AND";
+                        e->SetFail(AND, lex);
                         return nullptr;
                     }
                     lex->next();
@@ -303,7 +299,7 @@ namespace GSP {
                             in_what->GetRowType() != AstRowExpr::SC_LIST) {
                         delete (row_expr);
                         delete (in_what);
-                        e->_code = ParseException::FAIL;
+                        e->_code = ParseException::FAIL;    /* todo */
                         return nullptr;
                     }
                     AstSearchCondition *r = new AstSearchCondition;
@@ -325,7 +321,7 @@ namespace GSP {
                     return r;
                 }
                 else {
-                    e->_code = ParseException::FAIL;
+                    e->SetFail({BETWEEN, IN, LIKE}, lex);
                     delete (row_expr);
                     return nullptr;
                 }
@@ -463,8 +459,7 @@ namespace GSP {
                         for (auto it : ids) delete (it);
                         ids.clear();
                         delete (exprs);
-                        e->_code = ParseException::FAIL;
-                        e->_detail = "EXPECT ')'";
+                        e->SetFail(RPAREN, lex);
                         return nullptr;
                     }
                     lex->next();
@@ -501,8 +496,7 @@ namespace GSP {
                 }
                 if (lex->token()->type() != RPAREN) {
                     delete (expr_list);
-                    e->_code = ParseException::FAIL;
-                    e->_detail = "EXPECT ')'";
+                    e->SetFail(RPAREN, lex);
                     return nullptr;
                 }
                 lex->next();
@@ -513,7 +507,7 @@ namespace GSP {
             }
         }
         else {
-            e->_code = ParseException::FAIL;
+            e->SetFail({LPAREN, ID, STAR, CASE, PLUS, MINUS, TRUE, FALSE, NULLX, STR_LITERAL, NUMBER, QUES}, lex);
             return nullptr;
         }
     }

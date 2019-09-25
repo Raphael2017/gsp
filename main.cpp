@@ -67,14 +67,16 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
+
+
     clock_t start = 0, finish = 0;
     start = clock();
     for (int i = 0; i < 10000; ++i) {
         GSP::ILex *lex = GSP::make_lex(sql.c_str());
         GSP::ParseException e;
         lex->next();
-        for (; lex->token()->type() != GSP::SEMI; lex->next() );
-        //GSP::AstSelectStmt *stmt = GSP::parse_select_stmt(lex, &e);
+        GSP::AstSelectStmt *stmt = GSP::parse_select_stmt(lex, &e);
+        int qq = 0;
     }
     finish = clock();
     auto dur = finish-start;

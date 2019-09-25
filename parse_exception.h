@@ -7,6 +7,8 @@
 
 namespace GSP {
     struct ParseException {
+        void SetFail(TokenType expect, ILex *lex);
+        void SetFail(const std::vector<TokenType >& expects, ILex *lex);
         enum { SUCCESS, FAIL } _code = SUCCESS;
         std::string _detail;
     };
