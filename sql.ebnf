@@ -1,0 +1,129 @@
+/* sql root */
+sql = stmt_list END_P
+
+stmt_list = stmt { semicolon stmt }...
+
+stmt = select_stmt | update_stmt | delete_stmt | insert_stmt | call_stmt
+
+/* SELECT */
+select_stmt = query_expression [ ORDER BY sort_list ]
+
+sort_list = { row_expr [ ASC | DESC ] } { comma { row_expr [ ASC | DESC ] } }...
+
+query_expression = [ WITH [ RECURSIVE ] common_table_expr { comma common_table_expr }... ] query_expression_body
+
+common_table_expr = id [ left_paren simple_ident_list right_paren ] AS left_paren query_expression right_paren
+
+query_expression_body = query_term { { UNION | EXCEPT } [ ALL | DISTINCT ] query_term }...
+
+query_term = query_primary { INTERSECT [ ALL | DISTINCT ] query_primary }...
+
+query_primary = left_paren query_expression_body right_paren
+	| SELECT [ ALL | DISTINCT ] projection_list [ FROM table_reference_list ] [ WHERE search_condition ] [ GROUP BY [ ALL | DISTINCT ] grouping_element_list ] [ HAVING search_condition ]
+
+
+/* projection_list */
+projection_list = projection { comma projection }...
+
+projection = row_expr [ [ AS ] label ]
+
+table_reference_list = table_reference { comma table_reference }... 
+
+/* table_reference */
+table_reference = table_primary { table_reference_rest }...
+
+table_reference_rest = [ join_type ] JOIN table_reference { { ON search_condition } | { USING left_paren simple_ident_list right_paren } }
+	| CROSS JOIN table_primary
+	| NATURAL [ join_type ] JOIN table_primary
+
+table_primary = relation_factor [ [ AS ] label ]
+	| left_paren query_expression right_paren [ AS ] label [ left_paren simple_ident_list right_paren ]
+	| left_paren joined_table right_paren	/* todo some problem here */
+
+join_type = { FULL | LEFT | RIGHT } [ OUTER ]
+	| INNER
+
+/* expression */
+search_condition = boolean_term { OR boolean_term }...
+
+boolean_term = boolean_factor { AND boolean_factor }...
+
+boolean_factor = NOT boolean_factor
+	| boolean_test
+
+boolean_test = boolean_primary [ IS [ NOT ] { TRUE | FALSE | UNKNOWN } ]
+
+boolean_primary = row_expr { comp_le | comp_lt | comp_ge | comp_gt | comp_eq | comp_ne } row_expr
+	| row_expr [ NOT ] BETWEEN row_expr AND row_expr
+	| row_expr [ NOT ] IN row_expr	/* check subquery or row_expr_list */
+	| row_expr [ NOT ] LIKE row_expr [ ESCAPE row_expr ]
+	| row_expr IS [ NOT ] NULL
+	| row_expr { comp_le | comp_lt | comp_ge | comp_gt | comp_eq | comp_ne } { ALL | SOME | ANY } left_paren query_expression right_paren
+	| EXISTS left_paren query_expression right_paren
+	| row_expr /* convert */
+
+row_expr = factor0 { { plus | minus | barbar } factor0 }...
+
+factor0 = factor1 { { asterisk | div | rem | MOD } factor1 }...
+
+factor1 = row_primary { caret row_primary }...
+
+row_primary = { plus | minus } row_primary
+	| { TRUE | FALSE | UNKNOWN | DEFAULT | NULL | INT | FLOAT | STRING }
+	| column_reference
+	| func_expr									/* todo some problem here */
+	| case_expr
+	| left_paren search_condition { comma search_condition } right_paren
+	| left_paren query_expression right_paren	/* todo some problem here */
+
+column_reference = name_dot_list [ dot asterisk ]
+
+case_expr = CASE [ search_condition ] when_clause { when_clause }... [ ELSE search_condition ] END
+
+when_clause = WHEN search_condition THEN search_condition
+
+/* name dot list */
+name_dot_list = name { dot name }...
+
+/* dot */
+dot = "."
+
+/* semicolon */
+semicolon = ";"
+
+/* left paren */
+left_paren = "("
+
+/* right paren */
+right_paren = ")"
+
+/* comma */
+comma = ","
+
+/* asterisk */
+asterisk = "*"
+
+/* compare operator */
+comp_le = "<="
+comp_lt = "<"
+comp_ge = ">="
+comp_gt = ">"
+comp_eq = "="
+comp_ne = "<>" | "!="
+
+/* priority 0 */
+plus = "+"
+minus = "-"
+barbar = "||"
+
+/* priority 1 */
+/* asterisk */
+div = "/"
+rem = "%"
+/* MOD */
+
+/* priority 2 */
+caret = "^"
+
+
+
