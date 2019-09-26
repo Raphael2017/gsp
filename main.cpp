@@ -67,7 +67,11 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
+    //sql = "SELECT a FROM B WHERE \"mmp\" = (SELECT * FROM C GROUP BY mmm ORDER BY qwe)";
 
+    //sql = "   (SELECT * FROM SALES INTERSECT SELECT * FROM SALES) INTERSECT ((SELECT * FROM SALES))";
+
+    //sql = "SELECT 1>2";
 
     clock_t start = 0, finish = 0;
     start = clock();
@@ -76,9 +80,11 @@ int main() {
         GSP::ParseException e;
         lex->next();
         GSP::AstSelectStmt *stmt = GSP::parse_select_stmt(lex, &e);
+        //for (;lex->token()->type() != GSP::END_P; lex->next());
         int qq = 0;
     }
     finish = clock();
     auto dur = finish-start;
+    printf("%d", dur);
     return 0;
 }

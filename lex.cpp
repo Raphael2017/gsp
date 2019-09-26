@@ -4,6 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <sstream>
+#include <vector>
 
 #define EOI (-1)
 
@@ -23,6 +24,9 @@ namespace GSP {
         virtual const char *word() const override { return word_.c_str(); }
 
         virtual const char *word_semantic() const override { return word1_.c_str(); }
+
+        void set(TokenType tp, const std::string &word) { type_ = tp; word_ = word; word1_ = word; }
+        void set(TokenType tp, const std::string &word, const std::string &word1) { type_ = tp; word_ = word; word1_ = word1; }
 
         TokenType type_;
         std::string word_;  // for lex
@@ -77,87 +81,87 @@ namespace GSP {
         void scanf_operator() {
             switch (char_at(pos())) {
                 case '^': {
-                    cur_tk_ = Token(CARET, "^");
+                    cur_tk_.set(CARET, "^");
                     pos_inc(1);
                 }
                     break;
                 case '%': {
-                    cur_tk_ = Token(PERCENT, "%");
+                    cur_tk_.set(PERCENT, "%");
                     pos_inc(1);
                 }
                     break;
                 case '+': {
-                    cur_tk_ = Token(PLUS, "+");
+                    cur_tk_.set(PLUS, "+");
                     pos_inc(1);
                 }
                     break;
                 case '-': {
-                    cur_tk_ = Token(MINUS, "-");
+                    cur_tk_.set(MINUS, "-");
                     pos_inc(1);
                 }
                     break;
                 case '*': {
-                    cur_tk_ = Token(STAR, "*");
+                    cur_tk_.set(STAR, "*");
                     pos_inc(1);
                 }
                     break;
                 case '/': {
-                    cur_tk_ = Token(DIVIDE, "/");
+                    cur_tk_.set(DIVIDE, "/");
                     pos_inc(1);
                 }
                     break;
                 case '.': {
-                    cur_tk_ = Token(DOT, ".");
+                    cur_tk_.set(DOT, ".");
                     pos_inc(1);
                 }
                     break;
                 case '(': {
-                    cur_tk_ = Token(LPAREN, "(");
+                    cur_tk_.set(LPAREN, "(");
                     pos_inc(1);
                 }
                     break;
                 case ')': {
-                    cur_tk_ = Token(RPAREN, ")");
+                    cur_tk_.set(RPAREN, ")");
                     pos_inc(1);
                 }
                     break;
                 case ',': {
-                    cur_tk_ = Token(COMMA, ",");
+                    cur_tk_.set(COMMA, ",");
                     pos_inc(1);
                 }
                     break;
                 case ';': {
-                    cur_tk_ = Token(SEMI, ";");
+                    cur_tk_.set(SEMI, ";");
                     pos_inc(1);
                 }
                     break;
                 case '?': {
-                    cur_tk_ = Token(QUES, "?");
+                    cur_tk_.set(QUES, "?");
                     pos_inc(1);
                 }
                     break;
                 case '=': {
-                    cur_tk_ = Token(EQ, "=");
+                    cur_tk_.set(EQ, "=");
                     pos_inc(1);
                 }
                     break;
                 case '!': {
                     pos_inc(1);
                     if (char_at(pos()) == '=') {
-                        cur_tk_ = Token(LTGT, "!=");
+                        cur_tk_.set(LTGT, "!=");
                         pos_inc(1);
                     } else {
-                        cur_tk_ = Token(ERR, "EXPECTED '!='");
+                        cur_tk_.set(ERR, "EXPECTED '!='");
                     }
                 }
                     break;
                 case '>': {
                     pos_inc(1);
                     if (char_at(pos()) == '=') {
-                        cur_tk_ = Token(GTEQ, ">=");
+                        cur_tk_.set(GTEQ, ">=");
                         pos_inc(1);
                     } else {
-                        cur_tk_ = Token(GT, ">");
+                        cur_tk_.set(GT, ">");
                     }
 
                 }
@@ -165,29 +169,29 @@ namespace GSP {
                 case '<': {
                     pos_inc(1);
                     if (char_at(pos()) == '=') {
-                        cur_tk_ = Token(LTEQ, "<=");
+                        cur_tk_.set(LTEQ, "<=");
                         pos_inc(1);
                     } else if (char_at(pos()) == '>') {
-                        cur_tk_ = Token(LTGT, "<>");
+                        cur_tk_.set(LTGT, "<>");
                         pos_inc(1);
                     } else {
-                        cur_tk_ = Token(LT, "<");
+                        cur_tk_.set(LT, "<");
                     }
                 }
                     break;
                 case '|': {
                     pos_inc(1);
                     if (char_at(pos()) == '|') {
-                        cur_tk_ = Token(BARBAR, "||");
+                        cur_tk_.set(BARBAR, "||");
                         pos_inc(1);
                     } else {
-                        cur_tk_ = Token(ERR, "EXPECTED '||'");
+                        cur_tk_.set(ERR, "EXPECTED '||'");
                     }
                 }
                     break;
                 default: {
                     std::string err_s = "UNEXPECTED ";
-                    cur_tk_ = Token(ERR, err_s + char_at(pos()));
+                    cur_tk_.set(ERR, err_s + char_at(pos()));
                 }
                     break;
             }
@@ -212,9 +216,9 @@ namespace GSP {
             }
             if (c == '\'') {
                 pos_inc(1);
-                cur_tk_ = Token(STR_LITERAL, sub(start, pos()), buf.str());
+                cur_tk_.set(STR_LITERAL, sub(start, pos()), buf.str());
             } else
-                cur_tk_ = Token(ERR, "UNTERMINATED STRING LITERAL");
+                cur_tk_.set(ERR, "UNTERMINATED STRING LITERAL");
         }
 
         void scanf_identifier() {
@@ -238,9 +242,9 @@ namespace GSP {
                     }
                     if (c == '"') {
                         pos_inc(1);
-                        cur_tk_ = Token(ID, sub(start, pos()), buf.str());
+                        cur_tk_.set(ID, sub(start, pos()), buf.str());
                     } else
-                        cur_tk_ = Token(ERR, "IDENTIFIER WITH UNTERMINATED \"");
+                        cur_tk_.set(ERR, "IDENTIFIER WITH UNTERMINATED \"");
                 }
                     break;
                 case '[': {
@@ -260,9 +264,9 @@ namespace GSP {
                     }
                     if (c == ']') {
                         pos_inc(1);
-                        cur_tk_ = Token(ID, sub(start, pos()), buf.str());
+                        cur_tk_.set(ID, sub(start, pos()), buf.str());
                     } else
-                        cur_tk_ = Token(ERR, "IDENTIFIER WITH UNTERMINATED [");
+                        cur_tk_.set(ERR, "IDENTIFIER WITH UNTERMINATED [");
                 }
                     break;
                 default: {
@@ -275,10 +279,10 @@ namespace GSP {
 
                         std::string s = sub(start, pos());
                         if (!check_reserved_keyword(s))
-                            cur_tk_ = Token(ID, s);
+                            cur_tk_.set(ID, s);
                     } else {
                         std::string err_s = "UNEXPECTED ";
-                        cur_tk_ = Token(ERR, err_s + c);
+                        cur_tk_.set(ERR, err_s + c);
                     }
 
                 }
@@ -297,7 +301,7 @@ namespace GSP {
                     while (is_dec_body(c))
                         c = char_at(pos_inc(1));
                 } else {
-                    cur_tk_ = Token(ERR, "ERR NUMBER .");
+                    cur_tk_.set(ERR, "ERR NUMBER .");
                     return;
                 }
             } else {
@@ -308,7 +312,7 @@ namespace GSP {
                     c = char_at(pos_inc(1));
                     while (is_hex_body(c))
                         c = char_at(pos_inc(1));
-                    cur_tk_ = Token(NUMBER, sub(start, pos()));
+                    cur_tk_.set(NUMBER, sub(start, pos()));
                     return;
                 } else {
                     while (is_dec_body(c))
@@ -331,11 +335,11 @@ namespace GSP {
                     while (is_dec_body(c))
                         c = char_at(pos_inc(1));
                 } else {
-                    cur_tk_ = Token(ERR, "ERR NUMBER E");
+                    cur_tk_.set(ERR, "ERR NUMBER E");
                     return;
                 }
             }
-            cur_tk_ = Token(NUMBER, sub(start, pos()));
+            cur_tk_.set(NUMBER, sub(start, pos()));
         }
 
         bool is_dec_body(char c) {
@@ -366,7 +370,7 @@ namespace GSP {
             pos_ += inc;
             col_ += inc;
             if (pos_ > sql_.length())
-                cur_tk_ = Token(END_P, "");
+                cur_tk_.set(END_P, "");
             return pos_;
         }
 
@@ -377,16 +381,21 @@ namespace GSP {
             col_ = 0;
         }
 
+        /* todo */
+#if 0
+        bool check_reserved_keyword(const std::string &word) { return false; }
+#else
         bool check_reserved_keyword(const std::string &word) {
             std::string big = word;
             std::transform(big.begin(), big.end(), big.begin(), ::toupper);
             auto it = keyword_.find(big);
             if (it != keyword_.end()) {
-                cur_tk_ = Token(it->second, word);
+                cur_tk_.set(it->second, word);
                 return true;
             }
             return false;
         }
+#endif
 
         char char_at(unsigned int pos) {
             if (pos < sql_.length())
@@ -407,6 +416,7 @@ namespace GSP {
         unsigned int col_;
         std::map<std::string, TokenType> keyword_;
         std::map<TokenType, std::string> keyword1_;
+        //std::vector<TokenType> hash_; /* todo */
     };
 
     Token::Token() : type_(none) {}
@@ -485,34 +495,7 @@ namespace GSP {
             {"WHERE",     WHERE},
             {"WITH",      WITH}
     } {
-        keyword1_.clear();
-        for (auto it : keyword_)
-            keyword1_[it.second] = it.first;
-        keyword1_[none] = "none";
-        keyword1_[CARET] = "^";
-        keyword1_[PERCENT] = "%";
-        keyword1_[PLUS] = "+";
-        keyword1_[MINUS] = "-";
-        keyword1_[STAR] = "*";
-        keyword1_[DIVIDE] = "/";
-        keyword1_[DOT] = ".";
-        keyword1_[LPAREN] = "(";
-        keyword1_[RPAREN] = ")";
-        keyword1_[COMMA] = ",";
-        keyword1_[SEMI] = ";";
-        keyword1_[QUES] = "?";
-        keyword1_[EQ] = "=";
-        keyword1_[GT] = ">";
-        keyword1_[LT] = "<";
-        keyword1_[BARBAR] = "||";
-        keyword1_[GTEQ] = ">=";
-        keyword1_[LTEQ] = "<=";
-        keyword1_[LTGT] = "<>";
-        keyword1_[STR_LITERAL] = "STR_LITERAL";
-        keyword1_[ID] = "ID";
-        keyword1_[NUMBER] = "NUMBER";
-        keyword1_[ERR] = "LEX_ERROR";
-        keyword1_[END_P] = "END_P";
+
     }
 
     void Lex::scanf() {
@@ -584,6 +567,7 @@ namespace GSP {
                 }
                     break;
                 case EOI: {
+                    cur_tk_.set(END_P, "");
                     return;
                 }
                     break;
@@ -593,7 +577,7 @@ namespace GSP {
                     } else {
                         char c = char_at(pos());
                         std::string err_s = "UNEXPECTED ";
-                        cur_tk_ = Token(ERR, err_s + c);
+                        cur_tk_.set(ERR, err_s + c);
                         return;
                     }
                 }
@@ -644,7 +628,7 @@ namespace GSP {
             pos_inc(2);  /* skip  */
         else {
             /* unterminated multiline comment */
-            cur_tk_ = Token(ERR, "unterminated multiline comment");
+            cur_tk_.set(ERR, "unterminated multiline comment");
         }
     }
 

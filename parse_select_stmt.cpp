@@ -14,7 +14,7 @@ namespace GSP {
 
     AstQueryExpressionBody  *parse_query_expression_body    (ILex *lex, ParseException *e);
     AstQueryExpressionBody  *parse_query_term               (ILex *lex, ParseException *e);
-    AstQueryPrimary         *parse_query_primary            (ILex *lex, ParseException *e);
+    AstQueryExpressionBody  *parse_query_primary            (ILex *lex, ParseException *e);
 
     std::vector<AstProjection*>         parse_projection_list           (ILex *lex, ParseException *e);
     AstProjection                      *parse_projection                (ILex *lex, ParseException *e);
@@ -128,14 +128,10 @@ namespace GSP {
 
     AstQueryExpressionBody *parse_query_term(ILex *lex, ParseException *e) {
         // primary
-        AstQueryPrimary *primary1 = parse_query_primary(lex, e);
+        AstQueryExpressionBody *primary = parse_query_primary(lex, e);
         if (e->_code != ParseException::SUCCESS) {
             return nullptr;
         }
-
-        AstQueryExpressionBody *primary = new AstQueryExpressionBody;
-        primary->SetSetType(AstQueryExpressionBody::SIMPLE);
-        primary->SetPrimary(primary1);
         TokenType tkp = lex->token()->type();
         for (; tkp == INTERSECT; tkp = lex->token()->type()) {
             lex->next();
@@ -147,14 +143,11 @@ namespace GSP {
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
-            AstQueryPrimary *primary1 = parse_query_primary(lex, e);
+            AstQueryExpressionBody *right = parse_query_primary(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (primary);
                 return nullptr;
             }
-            AstQueryExpressionBody *right = new AstQueryExpressionBody;
-            right->SetSetType(AstQueryExpressionBody::SIMPLE);
-            right->SetPrimary(primary1);
             primary->SetRight(right);
         }
         return primary;
@@ -172,12 +165,12 @@ namespace GSP {
         else return AstQueryPrimary::GROUP_BY;
     }
 
-    AstQueryPrimary *parse_query_primary(ILex *lex, ParseException *e) {
-        AstQueryPrimary *primary = nullptr;
+    AstQueryExpressionBody *parse_query_primary(ILex *lex, ParseException *e) {
+        AstQueryExpressionBody *r = nullptr;
         if (lex->token()->type() == SELECT) {
+            AstQueryPrimary *primary = nullptr;
             lex->next();
             primary = new AstQueryPrimary;
-            primary->SetQueryType(AstQueryPrimary::SIMPLE_SELECT);
 
             auto all_distinct = lex->token()->type();
             AstQueryPrimary::SELECT_TYPE st = mk_select_type(all_distinct);
@@ -238,6 +231,9 @@ namespace GSP {
                 }
                 primary->SetHaving(having);
             }
+            r = new AstQueryExpressionBody;
+            r->SetSetType(AstQueryExpressionBody::SIMPLE);
+            r->SetPrimary(primary);
         }
         else if (lex->token()->type() == LPAREN) {
             lex->next();
@@ -246,26 +242,18 @@ namespace GSP {
                 return nullptr;
             }
             if (lex->token()->type() != RPAREN) {
+                delete (body);
                 e->SetFail(RPAREN, lex);
                 return nullptr;
             }
             lex->next();    // skip ')'
-            if (body->GetSetType() == AstQueryExpressionBody::SIMPLE) {
-                primary = body->GetPrimary();
-                body->SetPrimary(nullptr);
-                delete (body);
-            }
-            else {
-                primary = new AstQueryPrimary;
-                primary->SetQueryType(AstQueryPrimary::QUERY_EXPRESSION);
-                primary->SetBody(body);
-            }
+            r = body;
         }
         else {
             e->SetFail({SELECT, LPAREN}, lex);
             return nullptr;
         }
-        return primary;
+        return r;
     }
 
     AstWithClause *parse_with_clause(ILex *lex, ParseException *e) {

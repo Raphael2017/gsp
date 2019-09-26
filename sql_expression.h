@@ -28,11 +28,13 @@ namespace GSP {
                 LIKE, NOT_LIKE,
                 ROW_EXPR } ;
         void SetExprType(EXPR_TYPE tp) { _expr_type = tp; }
+        EXPR_TYPE GetExprType() { return _expr_type; }
         void SetLeft(AstSearchCondition *sc) { u._bbody._left = sc; }
         void SetRight(AstSearchCondition *sc) { u._bbody._right = sc; }
         void SetSc(AstSearchCondition *sc) { u._not_search_condition = sc; }
         void SetExist(AstSelectStmt *s) { u._exist_query = s; }
         void SetRowExpr1(AstRowExpr *re) { u._row_expr = re; }
+        AstRowExpr *GetRowExpr1() { return u._row_expr; }
         void SetRowExpr3(AstRowExpr *r1, AstRowExpr *r2, AstRowExpr *r3) {
             u._tbody._r1 = r1; u._tbody._r2 = r2; u._tbody._r3 = r3;
         }
@@ -61,7 +63,7 @@ namespace GSP {
             C_QUES, C_TRUE, C_FALSE, C_UNKNOWN, C_DEFAULT, C_NULL, C_VALUE,
             COLUMN_REF, FUNC_CALL,
             CASE_EXPR,
-            SC_LIST, SUBQUERY};
+            SC_LIST, SEARCH_COND, SUBQUERY};
         ROW_EXPR_TYPE GetRowType() { return  _type; }
         void SetRowType(ROW_EXPR_TYPE tp) { _type = tp; }
         void SetLeft(AstRowExpr *left) { u._bbody._left = left; }
@@ -73,6 +75,7 @@ namespace GSP {
         void SetConstantValue(AstConstantValue *c) { u._value = c; }
         void SetUnaryExpr(AstRowExpr *r) { u._u_row_expr = r; }
         void SetFunc(AstFuncCall *f) { u._func_call = f; }
+        void SetSearchCondition(AstSearchCondition *sc) { u._sc = sc; }
     private:
         ROW_EXPR_TYPE _type;
         union {
@@ -86,6 +89,7 @@ namespace GSP {
             AstFuncCall         *_func_call;
             AstCaseExpr         *_case;
             AstExprList         *_expr_list;
+            AstSearchCondition  *_sc;
             AstSelectStmt       *_subquery;
         } u;
     };
@@ -134,6 +138,7 @@ namespace GSP {
     class AstExprList : public IObject {
     public:
         void SetExprs(const std::vector<AstSearchCondition*>& exprs) { _exprs = exprs; }
+        std::vector<AstSearchCondition*> GetExprs() { return _exprs; }
     private:
         std::vector<AstSearchCondition*> _exprs;
     };

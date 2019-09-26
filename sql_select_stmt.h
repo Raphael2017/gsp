@@ -78,11 +78,8 @@ namespace GSP {
 
     class AstQueryPrimary : public IObject {
     public:
-        enum QUERY_TYPE { SIMPLE_SELECT, QUERY_EXPRESSION };
         enum SELECT_TYPE { SELECT, SELECT_ALL, SELECT_DISTINCT };
         enum GROUP_TYPE { GROUP_BY, GROUP_BY_ALL, GROUP_BY_DISTINCT };
-        void SetQueryType(QUERY_TYPE tp) { _type = tp; }
-        void SetBody(AstQueryExpressionBody *body) { _body = body; }
         void SetSelectType(SELECT_TYPE tp) { _sel_quantifier = tp; }
         void SetProjectionList(const std::vector<AstProjection*>& projection_list) { _projection_list = projection_list; }
         void SetFrom(const std::vector<AstTableRef*>& tableref_list) { _tableref_list = tableref_list; }
@@ -92,8 +89,6 @@ namespace GSP {
         void SetHaving(AstSearchCondition *sc) { _having_search_condition = sc; }
         const std::vector<AstTableRef*>& GetFrom() const { return _tableref_list; }
     private:
-        QUERY_TYPE _type;
-        AstQueryExpressionBody *_body;
         SELECT_TYPE     _sel_quantifier;
         std::vector<AstProjection*>     _projection_list;           /* size at least 1 */
         std::vector<AstTableRef*>       _tableref_list;             /* size 0 means NO FROM */

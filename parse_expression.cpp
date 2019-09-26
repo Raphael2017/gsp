@@ -500,9 +500,27 @@ namespace GSP {
                     return nullptr;
                 }
                 lex->next();
-                AstRowExpr *r = new AstRowExpr;
-                r->SetRowType(AstRowExpr::SC_LIST);
-                r->SetExprList(expr_list);
+                AstRowExpr *r = nullptr;
+                std::vector<AstSearchCondition*> scs = expr_list->GetExprs();
+                assert(scs.size() > 0);
+                if (scs.size() == 1) {
+                    AstSearchCondition *sc = scs[0];
+                    expr_list->SetExprs({});
+                    delete (expr_list);
+                    if (sc->GetExprType() == AstSearchCondition::ROW_EXPR) {
+                        r = sc->GetRowExpr1();
+                        sc->SetRowExpr1(nullptr);
+                        delete (sc);
+                    } else {
+                        r = new AstRowExpr;
+                        r->SetRowType(AstRowExpr::SEARCH_COND);
+                        r->SetSearchCondition(sc);
+                    }
+                } else {
+                    r = new AstRowExpr;
+                    r->SetRowType(AstRowExpr::SC_LIST);
+                    r->SetExprList(expr_list);
+                }
                 return r;
             }
         }
