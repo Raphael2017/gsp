@@ -55,7 +55,7 @@ namespace GSP {
                 }
                 items.push_back(order_by_item);
             }
-            select_stmt->SetOrderByClause(items);
+            select_stmt->SetOrderByItems(items);
         }
         return select_stmt;
     }
@@ -109,10 +109,10 @@ namespace GSP {
         for (; tkp == UNION || tkp == EXCEPT; tkp = lex->token()->type()) {
             lex->next();
             AstQueryExpressionBody *left = query_term;
-            query_term = new AstQueryExpressionBody;
-            query_term->SetLeft(left);
+            query_term = new AstQuerySet;
+            dynamic_cast<AstQuerySet*>(query_term)->SetLeft(left);
             auto all_distinct = lex->token()->type();
-            query_term->SetSetType(mk_set_type(tkp, all_distinct));
+            dynamic_cast<AstQuerySet*>(query_term)->SetSetType(mk_set_type(tkp, all_distinct));
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
@@ -121,7 +121,7 @@ namespace GSP {
                 delete (query_term);
                 return nullptr;
             }
-            query_term->SetRight(right);
+            dynamic_cast<AstQuerySet*>(query_term)->SetRight(right);
         }
         return query_term;
     }
@@ -136,10 +136,10 @@ namespace GSP {
         for (; tkp == INTERSECT; tkp = lex->token()->type()) {
             lex->next();
             AstQueryExpressionBody *left = primary;
-            primary = new AstQueryExpressionBody;
-            primary->SetLeft(left);
+            primary = new AstQuerySet;
+            dynamic_cast<AstQuerySet*>(primary)->SetLeft(left);
             auto all_distinct = lex->token()->type();
-            primary->SetSetType(mk_set_type(tkp, all_distinct));
+            dynamic_cast<AstQuerySet*>(primary)->SetSetType(mk_set_type(tkp, all_distinct));
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
@@ -148,7 +148,7 @@ namespace GSP {
                 delete (primary);
                 return nullptr;
             }
-            primary->SetRight(right);
+            dynamic_cast<AstQuerySet*>(primary)->SetRight(right);
         }
         return primary;
     }
@@ -231,9 +231,7 @@ namespace GSP {
                 }
                 primary->SetHaving(having);
             }
-            r = new AstQueryExpressionBody;
-            r->SetSetType(AstQueryExpressionBody::SIMPLE);
-            r->SetPrimary(primary);
+            r = primary;
         }
         else if (lex->token()->type() == LPAREN) {
             lex->next();
@@ -371,7 +369,7 @@ namespace GSP {
         }
         if (lex->token()->type() == ID) {
             AstId *label = parse_id(lex, e);
-            proj->SetLable(label);
+            proj->SetAlias(label);
         }
         return proj;
     }
@@ -392,7 +390,7 @@ namespace GSP {
             ot = AstOrderByItem::NIL;
         }
         AstOrderByItem *r = new AstOrderByItem;
-        r->SetOrder(ot, expr);
+        r->SetOrderItem(ot, expr);
         return nullptr;
     }
 

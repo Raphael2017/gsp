@@ -16,10 +16,92 @@ namespace GSP {
     class AstSelectStmt;
     class AstId;
 
+#if 0
+    /* boolean */
+    class AstSearchCondition : public IObject {
+    public:
+        enum CONDITION_TYPE {
+            OR, AND, NOT, TEST, PREDICATE, ROW_EXPR_CONVERT_TO_CONDITION/*  */
+        };
+        ~AstSearchCondition() {}
+        virtual CONDITION_TYPE GetConditionType() = 0;
+    };
+
+    /* value */
+    class AstRowExpr : public AstSearchCondition {
+    public:
+        enum ROW_EXPR_TYPE {
+            PLUS, MINUS
+        };
+        ~AstRowExpr() {}
+        CONDITION_TYPE GetConditionType() override { return ROW_EXPR_CONVERT_TO_CONDITION; }
+        virtual ROW_EXPR_TYPE GetRowExprType() = 0;
+    };
+
+    class AstOrAndCondition : public AstSearchCondition {
+    public:
+        AstOrAndCondition() : _left(nullptr), _right(nullptr) {}
+        ~AstOrAndCondition() { delete (_left); _left = nullptr; delete (_right); _right = nullptr; }
+        void SetConditionType(CONDITION_TYPE condition_type) { _condition_type = condition_type; }
+        CONDITION_TYPE GetConditionType() override { return _condition_type; }
+        void SetLeft(AstSearchCondition *left) { _left = left; }
+        AstSearchCondition *GetLeft() { return _left; }
+        void SetRight(AstSearchCondition *right) { _right = right; }
+        AstSearchCondition *GetRight() { return _right; }
+    private:
+        CONDITION_TYPE       _condition_type;
+        AstSearchCondition  *_left;
+        AstSearchCondition  *_right;
+    };
+
+    class AstNotCondition : public AstSearchCondition {
+    public:
+        CONDITION_TYPE GetConditionType() override { return NOT; }
+        void SetFactor(AstSearchCondition *factor) { _factor = factor; }
+        AstSearchCondition *GetFactor() { return _factor; }
+    private:
+        AstSearchCondition *_factor;
+    };
+
+    class AstPredicate;
+    class AstTestCondition : public AstSearchCondition {
+    public:
+        AstTestCondition() : _test(nullptr) {}
+        ~AstTestCondition() { delete (_test); _test = nullptr; }
+        enum TEST_TYPE { TRUE, FALSE, UNKNOWN };
+        CONDITION_TYPE GetConditionType() override { return TEST; }
+        void SetHasNot(bool has_not) { _has_not = has_not; }
+        bool GetHasNot() { return _has_not; }
+        void SetTestType(TEST_TYPE test_type) { _test_type = test_type; }
+        TEST_TYPE GetTestType() { return _test_type; }
+        void SetPredicate(AstSearchCondition *test) { _test = test; }
+        AstSearchCondition *GetPredicate() { return _test; }
+    private:
+        bool                _has_not;
+        TEST_TYPE           _test_type;
+        AstSearchCondition *_test;
+    };
+
+    class AstPredicate : public AstSearchCondition {
+    public:
+        CONDITION_TYPE GetConditionType() override { return PREDICATE; }
+        enum PREDICATE_TYPE {
+            SIMPLE_COMPARE, BETWEEN, IN,
+            LIKE, IS_NULL, COMPLEX_COMPARE,
+            EXISTS
+        };
+    };
+
+
+#endif
+
+
+
+
     class AstSearchCondition : public IObject {
     public:
         enum EXPR_TYPE {
-                NOT, IS_TRUE, IS_NOT_TRUE, IS_FALSE, IS_NOT_FALSE, IS_UNKNOWN, IS_NOT_UNKNOWN, IS_NULL, IS_NOT_NULL, EXISTS,
+                NOT = 500, IS_TRUE, IS_NOT_TRUE, IS_FALSE, IS_NOT_FALSE, IS_UNKNOWN, IS_NOT_UNKNOWN, IS_NULL, IS_NOT_NULL, EXISTS,
                 OR, AND, COMP_LE, COMP_LT, COMP_GE, COMP_GT, COMP_EQ, COMP_NEQ, IN, NOT_IN,
                     COMP_LE_ALL, COMP_LT_ALL, COMP_GE_ALL, COMP_GT_ALL, COMP_EQ_ALL, COMP_NEQ_ALL,
                     COMP_LE_SOME, COMP_LT_SOME, COMP_GE_SOME, COMP_GT_SOME, COMP_EQ_SOME, COMP_NEQ_SOME,
@@ -58,7 +140,7 @@ namespace GSP {
 
     class AstRowExpr : public IObject {
     public:
-        enum ROW_EXPR_TYPE { PLUS, MINUS, BARBAR, MUL, DIV, REM, MOD, CARET,
+        enum ROW_EXPR_TYPE { PLUS = 1000, MINUS, BARBAR, MUL, DIV, REM, MOD, CARET,
             U_PLUS, U_MINUS,
             C_QUES, C_TRUE, C_FALSE, C_UNKNOWN, C_DEFAULT, C_NULL, C_VALUE,
             COLUMN_REF, FUNC_CALL,

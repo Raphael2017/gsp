@@ -21,7 +21,6 @@ namespace GSP {
         void SetId(const std::string& id) { _id = id; }
     private:
         std::string     _id;
-        /* todo */
     };
 }
 

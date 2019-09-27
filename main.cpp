@@ -5,6 +5,9 @@
 #include "sql_select_stmt.h"
 #include "sql_table_ref.h"
 #include <time.h>
+#include <hash_map>
+
+
 
 int main() {
     std::string sql = "SELECT a FROM (A JOIN B ON m=n), (SELECT m FROM PP) QQ";
@@ -67,11 +70,17 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
+
+
     //sql = "SELECT a FROM B WHERE \"mmp\" = (SELECT * FROM C GROUP BY mmm ORDER BY qwe)";
 
     //sql = "   (SELECT * FROM SALES INTERSECT SELECT * FROM SALES) INTERSECT ((SELECT * FROM SALES))";
 
-    //sql = "SELECT 1>2";
+    sql = "SELECT * FROM A CROSS JOIN B LEFT JOIN C ON m=n";
+    sql = "SELECT * FROM QAZ WHERE 1 > ( (SELECT 1 UNION SELECT 1) INTERSECT SELECT 2 )";
+
+    sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
+          " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
 
     clock_t start = 0, finish = 0;
     start = clock();

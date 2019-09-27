@@ -9,10 +9,8 @@
 
 namespace GSP {
 
-    AstTableRef             *parse_table_primary(ILex *lex, ParseException *e);
-    AstTableRef::JOIN_TYPE   parse_join_type(ILex *lex, ParseException *e);
-
-    AstRelation             *parse_relation(ILex *lex, ParseException *e);
+    AstTableRef                  *parse_table_primary(ILex *lex, ParseException *e);
+    AstTableRef::TABLE_REF_TYPE   parse_join_type(ILex *lex, ParseException *e);
 
     std::vector<AstTableRef*> parse_tableref_list(ILex *lex, ParseException *e) {
         std::vector<AstTableRef*> tablerefs;
@@ -45,7 +43,7 @@ namespace GSP {
         return false;
     }
 
-    AstTableRef::JOIN_TYPE parse_join_type1(TokenType full_left_right, bool has_natural, bool has_outer) {
+    AstTableRef::TABLE_REF_TYPE parse_join_type1(TokenType full_left_right, bool has_natural, bool has_outer) {
         assert(full_left_right == FULL || full_left_right == LEFT || full_left_right == RIGHT);
         if (full_left_right == FULL) {
             if (has_natural) {
@@ -74,8 +72,8 @@ namespace GSP {
         }
     }
 
-    AstTableRef::JOIN_TYPE  parse_join_type(ILex *lex, ParseException *e) {
-        AstTableRef::JOIN_TYPE join_type = AstTableRef::RELATION;
+    AstTableRef::TABLE_REF_TYPE  parse_join_type(ILex *lex, ParseException *e) {
+        AstTableRef::TABLE_REF_TYPE join_type = AstTableRef::RELATION;
         if (lex->token()->type() == CROSS) {
             lex->next();
             join_type = AstTableRef::CROSS_JOIN;
@@ -123,41 +121,49 @@ namespace GSP {
         }
         for (; has_join(lex->token()->type());) {
             AstTableRef *left = tr;
-            AstTableRef::JOIN_TYPE join = parse_join_type(lex, e);
+            AstTableRef::TABLE_REF_TYPE join = parse_join_type(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (tr);
                 return nullptr;
             }
-            tr = new AstTableRef;
-            tr->SetJoinType(join);
-            tr->SetLeft(left);
-            if (join == AstTableRef::CROSS_JOIN ||
-                (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN)) {
-                AstTableRef *right = parse_table_primary(lex, e);
-                if (e->_code != ParseException::SUCCESS) {
-                    delete (tr);
-                    return nullptr;
-                }
-                tr->SetRight(right);
+            if (join == AstTableRef::CROSS_JOIN) {
+                AstTableCrossJoin *cross_join = new AstTableCrossJoin;
+                tr = cross_join;
+                cross_join->SetLeft(left);
+            } else if (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
+                AstNaturalJoin *natural_join = new AstNaturalJoin;
+                tr = natural_join;
+                natural_join->SetJoinType(join);
+                natural_join->SetLeft(left);
             } else {
-                AstTableRef *right = parse_tabelref(lex, e);
-                if (e->_code != ParseException::SUCCESS) {
-                    delete (tr);
-                    return nullptr;
-                }
-                tr->SetRight(right);
+                AstTableJoin *other_join = new AstTableJoin;
+                tr = other_join;
+                other_join->SetJoinType(join);
+                other_join->SetLeft(left);
+            }
+            AstTableRef *right = parse_table_primary(lex, e);
+            if (e->_code != ParseException::SUCCESS) {
+                delete (tr);
+                return nullptr;
+            }
+            if (join == AstTableRef::CROSS_JOIN) {
+                dynamic_cast<AstTableCrossJoin*>(tr)->SetRight(right);
+            } else if (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
+                dynamic_cast<AstNaturalJoin*>(tr)->SetRight(right);
+            } else {
+                dynamic_cast<AstTableJoin*>(tr)->SetRight(right);
                 if (lex->token()->type() != ON) {
                     delete (tr);
                     e->SetFail(ON, lex);
                     return nullptr;
                 }
                 lex->next();
-                AstSearchCondition *cd = parse_search_condition(lex, e);
+                AstSearchCondition *search_condition = parse_search_condition(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
                     delete (tr);
                     return nullptr;
                 }
-                tr->SetOn(cd);
+                dynamic_cast<AstTableJoin*>(tr)->SetOn(search_condition);
             }
         }
         return tr;
@@ -198,8 +204,7 @@ namespace GSP {
                     }
                     lex->next();
                 }
-                AstTableRef *tr = new AstTableRef;
-                tr->SetJoinType(AstTableRef::SUBQUERY);
+                AstSubQueryTableRef *tr = new AstSubQueryTableRef;
                 tr->SetQuery(stmt, id, cols);
                 return tr;
             } else {        /* backtrack */
@@ -219,7 +224,7 @@ namespace GSP {
             }
         }
         else {
-            AstRelation *relation = parse_relation(lex, e);
+            std::vector<AstId*> ids = parse_ids(lex, e, DOT);
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
@@ -228,29 +233,18 @@ namespace GSP {
                 lex->next();
                 alias = parse_id(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
-                    delete (relation);
+                    for (auto it : ids) delete (it);
+                    ids.clear();
                     return nullptr;
                 }
             }
-            else {
-                if (lex->token()->type() == ID) {
-                    alias = parse_id(lex, e);
-                }
+            else if (lex->token()->type() == ID) {
+                alias = parse_id(lex, e);
             }
-            AstTableRef *r = new AstTableRef;
-            r->SetJoinType(AstTableRef::RELATION);
-            r->SetRelation(relation, alias);
+            AstRelation *r = new AstRelation;
+            r->SetRelationAndAlias(ids, alias);
             return r;
         }
     }
 
-    AstRelation *parse_relation(ILex *lex, ParseException *e) {
-        std::vector<AstId*> ids = parse_ids(lex, e, DOT);
-        if (e->_code != ParseException::SUCCESS) {
-            return nullptr;
-        }
-        AstRelation *r = new AstRelation;
-        r->SetIds(ids);
-        return r;
-    }
 }
