@@ -10,4 +10,6 @@ add_executable(gsp main.cpp
         parse_select_stmt.cpp
         parse_tableref.cpp
         parse_expression.cpp
-        parse_exception.cpp)
+        parse_exception.cpp
+        sql_select_stmt.cpp
+        sql_table_ref.cpp)

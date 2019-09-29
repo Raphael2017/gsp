@@ -37,10 +37,9 @@ namespace GSP {
                 delete (term);
                 return nullptr;
             }
-            term = new AstSearchCondition;
-            term->SetExprType(AstSearchCondition::OR);
-            term->SetLeft(l);
-            term->SetRight(r);
+            AstBinaryOpExpr *or_expr = new AstBinaryOpExpr(AstSearchCondition::OR);
+            or_expr->SetLeft(l); or_expr->SetRight(r);
+            term = or_expr;
         }
         return term;
     }
@@ -58,10 +57,9 @@ namespace GSP {
                 delete (factor);
                 return nullptr;
             }
-            factor = new AstSearchCondition;
-            factor->SetExprType(AstSearchCondition::AND);
-            factor->SetLeft(l);
-            factor->SetRight(r);
+            AstBinaryOpExpr *and_expr = new AstBinaryOpExpr(AstSearchCondition::AND);
+            and_expr->SetLeft(l); and_expr->SetRight(r);
+            factor = and_expr;
         }
         return factor;
     }
@@ -73,9 +71,8 @@ namespace GSP {
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
-            AstSearchCondition *r = new AstSearchCondition;
-            r->SetExprType(AstSearchCondition::NOT);
-            r->SetSc(cd);
+            AstUnaryOpExpr *r = new AstUnaryOpExpr(AstSearchCondition::NOT);
+            r->SetExpr(cd);
             return r;
         }
         return parse_boolean_test(lex, e);
@@ -111,10 +108,9 @@ namespace GSP {
                 e->SetFail({NOT, TRUE, FALSE, UNKNOWN}, lex);
                 return nullptr;
             }
-            AstSearchCondition *t = primary;
-            primary = new AstSearchCondition;
-            primary->SetExprType(expr_type);
-            primary->SetSc(t);
+            AstUnaryOpExpr *unary_expr = new AstUnaryOpExpr(expr_type);
+            unary_expr->SetExpr(primary);
+            primary = unary_expr;
         }
         return primary;
     }
@@ -176,16 +172,15 @@ namespace GSP {
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
-            AstSearchCondition *r = new AstSearchCondition;
-            r->SetExprType(AstSearchCondition::EXISTS);
-            r->SetExist(stmt);
+            AstExistsExpr *exists_expr = new AstExistsExpr;
+            exists_expr->SetQuery(stmt);
             if (lex->token()->type() != RPAREN) {
                 e->SetFail(RPAREN, lex);
-                delete (r);
+                delete (exists_expr);
                 return nullptr;
             }
             lex->next();
-            return r;
+            return exists_expr;
         }
         else {
             AstRowExpr *row_expr = parse_row_expr(lex, e);

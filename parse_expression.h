@@ -4,8 +4,9 @@
 namespace GSP {
     struct ILex;
     class ParseException;
-    class AstRowExpr;
-    class AstSearchCondition;
+    class AstExpr;
+    typedef AstExpr                             AstSearchCondition;
+    typedef AstExpr                             AstRowExpr;
     class AstExprList;
 
     AstSearchCondition      *parse_search_condition(ILex *lex, ParseException *e);

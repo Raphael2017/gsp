@@ -126,30 +126,16 @@ namespace GSP {
                 delete (tr);
                 return nullptr;
             }
-            if (join == AstTableRef::CROSS_JOIN) {
-                AstTableCrossJoin *cross_join = new AstTableCrossJoin;
-                tr = cross_join;
-                cross_join->SetLeft(left);
-            } else if (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
-                AstNaturalJoin *natural_join = new AstNaturalJoin;
-                tr = natural_join;
-                natural_join->SetJoinType(join);
-                natural_join->SetLeft(left);
-            } else {
-                AstTableJoin *other_join = new AstTableJoin;
-                tr = other_join;
-                other_join->SetJoinType(join);
-                other_join->SetLeft(left);
-            }
+            tr = new AstTableJoin;
+            dynamic_cast<AstTableJoin*>(tr)->SetJoinType(join);
+            dynamic_cast<AstTableJoin*>(tr)->SetLeft(left);
             AstTableRef *right = parse_table_primary(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (tr);
                 return nullptr;
             }
-            if (join == AstTableRef::CROSS_JOIN) {
-                dynamic_cast<AstTableCrossJoin*>(tr)->SetRight(right);
-            } else if (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
-                dynamic_cast<AstNaturalJoin*>(tr)->SetRight(right);
+            if (join == AstTableRef::CROSS_JOIN || join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
+                dynamic_cast<AstTableJoin*>(tr)->SetRight(right);
             } else {
                 dynamic_cast<AstTableJoin*>(tr)->SetRight(right);
                 if (lex->token()->type() != ON) {

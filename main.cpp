@@ -5,7 +5,6 @@
 #include "sql_select_stmt.h"
 #include "sql_table_ref.h"
 #include <time.h>
-#include <hash_map>
 
 
 

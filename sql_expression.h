@@ -7,223 +7,203 @@
 
 namespace GSP {
 
-    class AstRowExpr;
+    class AstExpr;
     class AstConstantValue;
     class AstColumnRef;
     class AstFuncCall;
     class AstCaseExpr;
     class AstExprList;
     class AstSelectStmt;
-    class AstId;
+    typedef std::vector<AstExpr*> AstExprs;
 
-#if 0
-    /* boolean */
-    class AstSearchCondition : public IObject {
-    public:
-        enum CONDITION_TYPE {
-            OR, AND, NOT, TEST, PREDICATE, ROW_EXPR_CONVERT_TO_CONDITION/*  */
-        };
-        ~AstSearchCondition() {}
-        virtual CONDITION_TYPE GetConditionType() = 0;
-    };
-
-    /* value */
-    class AstRowExpr : public AstSearchCondition {
-    public:
-        enum ROW_EXPR_TYPE {
-            PLUS, MINUS
-        };
-        ~AstRowExpr() {}
-        CONDITION_TYPE GetConditionType() override { return ROW_EXPR_CONVERT_TO_CONDITION; }
-        virtual ROW_EXPR_TYPE GetRowExprType() = 0;
-    };
-
-    class AstOrAndCondition : public AstSearchCondition {
-    public:
-        AstOrAndCondition() : _left(nullptr), _right(nullptr) {}
-        ~AstOrAndCondition() { delete (_left); _left = nullptr; delete (_right); _right = nullptr; }
-        void SetConditionType(CONDITION_TYPE condition_type) { _condition_type = condition_type; }
-        CONDITION_TYPE GetConditionType() override { return _condition_type; }
-        void SetLeft(AstSearchCondition *left) { _left = left; }
-        AstSearchCondition *GetLeft() { return _left; }
-        void SetRight(AstSearchCondition *right) { _right = right; }
-        AstSearchCondition *GetRight() { return _right; }
-    private:
-        CONDITION_TYPE       _condition_type;
-        AstSearchCondition  *_left;
-        AstSearchCondition  *_right;
-    };
-
-    class AstNotCondition : public AstSearchCondition {
-    public:
-        CONDITION_TYPE GetConditionType() override { return NOT; }
-        void SetFactor(AstSearchCondition *factor) { _factor = factor; }
-        AstSearchCondition *GetFactor() { return _factor; }
-    private:
-        AstSearchCondition *_factor;
-    };
-
-    class AstPredicate;
-    class AstTestCondition : public AstSearchCondition {
-    public:
-        AstTestCondition() : _test(nullptr) {}
-        ~AstTestCondition() { delete (_test); _test = nullptr; }
-        enum TEST_TYPE { TRUE, FALSE, UNKNOWN };
-        CONDITION_TYPE GetConditionType() override { return TEST; }
-        void SetHasNot(bool has_not) { _has_not = has_not; }
-        bool GetHasNot() { return _has_not; }
-        void SetTestType(TEST_TYPE test_type) { _test_type = test_type; }
-        TEST_TYPE GetTestType() { return _test_type; }
-        void SetPredicate(AstSearchCondition *test) { _test = test; }
-        AstSearchCondition *GetPredicate() { return _test; }
-    private:
-        bool                _has_not;
-        TEST_TYPE           _test_type;
-        AstSearchCondition *_test;
-    };
-
-    class AstPredicate : public AstSearchCondition {
-    public:
-        CONDITION_TYPE GetConditionType() override { return PREDICATE; }
-        enum PREDICATE_TYPE {
-            SIMPLE_COMPARE, BETWEEN, IN,
-            LIKE, IS_NULL, COMPLEX_COMPARE,
-            EXISTS
-        };
-    };
-
-
-#endif
-
-
-
-
-    class AstSearchCondition : public IObject {
+    class AstExpr : public IObject {
     public:
         enum EXPR_TYPE {
-                NOT = 500, IS_TRUE, IS_NOT_TRUE, IS_FALSE, IS_NOT_FALSE, IS_UNKNOWN, IS_NOT_UNKNOWN, IS_NULL, IS_NOT_NULL, EXISTS,
-                OR, AND, COMP_LE, COMP_LT, COMP_GE, COMP_GT, COMP_EQ, COMP_NEQ, IN, NOT_IN,
-                    COMP_LE_ALL, COMP_LT_ALL, COMP_GE_ALL, COMP_GT_ALL, COMP_EQ_ALL, COMP_NEQ_ALL,
-                    COMP_LE_SOME, COMP_LT_SOME, COMP_GE_SOME, COMP_GT_SOME, COMP_EQ_SOME, COMP_NEQ_SOME,
-                    COMP_LE_ANY, COMP_LT_ANY, COMP_GE_ANY, COMP_GT_ANY, COMP_EQ_ANY, COMP_NEQ_ANY,
-                BETWEEN, NOT_BETWEEN,
-                LIKE, NOT_LIKE,
-                ROW_EXPR } ;
-        void SetExprType(EXPR_TYPE tp) { _expr_type = tp; }
-        EXPR_TYPE GetExprType() { return _expr_type; }
-        void SetLeft(AstSearchCondition *sc) { u._bbody._left = sc; }
-        void SetRight(AstSearchCondition *sc) { u._bbody._right = sc; }
-        void SetSc(AstSearchCondition *sc) { u._not_search_condition = sc; }
-        void SetExist(AstSelectStmt *s) { u._exist_query = s; }
-        void SetRowExpr1(AstRowExpr *re) { u._row_expr = re; }
-        AstRowExpr *GetRowExpr1() { return u._row_expr; }
-        void SetRowExpr3(AstRowExpr *r1, AstRowExpr *r2, AstRowExpr *r3) {
-            u._tbody._r1 = r1; u._tbody._r2 = r2; u._tbody._r3 = r3;
-        }
+            /* BINARY OP BEGIN */
+            OR, AND, COMP_LE, COMP_LT, COMP_GE, COMP_GT, COMP_EQ, COMP_NEQ,
+            COMP_LE_ALL, COMP_LT_ALL, COMP_GE_ALL, COMP_GT_ALL, COMP_EQ_ALL, COMP_NEQ_ALL,
+            COMP_LE_SOME, COMP_LT_SOME, COMP_GE_SOME, COMP_GT_SOME, COMP_EQ_SOME, COMP_NEQ_SOME,
+            COMP_LE_ANY, COMP_LT_ANY, COMP_GE_ANY, COMP_GT_ANY, COMP_EQ_ANY, COMP_NEQ_ANY,
+
+            PLUS, MINUS, BARBAR, MUL, DIV, REM, MOD, CARET,
+            /* UNARY */
+            NOT, IS_TRUE, IS_NOT_TRUE, IS_FALSE, IS_NOT_FALSE, IS_UNKNOWN, IS_NOT_UNKNOWN, IS_NULL, IS_NOT_NULL,
+            U_POSITIVE, U_NEGATIVE,
+
+            /* LIKE */
+            LIKE, NOT_LIKE,
+
+            /* BETWEEN */
+            BETWEEN, NOT_BETWEEN,
+
+            /* IN */
+            IN, NOT_IN,
+
+            /* EXISTS */
+            EXISTS,
+
+            /* CONSTANT */
+            C_QUES, C_TRUE, C_FALSE, C_UNKNOWN, C_DEFAULT, C_NULL, C_NUMBER, C_STRING,
+            /* SUBQUERY */
+            EXPR_SUBQUERY,
+            /* LIST */
+            EXPR_LIST,
+            /* CASE */
+            EXPR_CASE,
+            /* CALL FUNCTION */
+            EXPR_FUNC,
+            /* COLUMN REFERENCE */
+            EXPR_COLUMN_REF
+        };
+        AstExpr(EXPR_TYPE expr_type) : IObject(AST_EXPR), _expr_type(expr_type) {}
+        virtual EXPR_TYPE GetExprType() { return _expr_type; }
     private:
         EXPR_TYPE _expr_type;
-        union {
-            struct {
-                AstSearchCondition  *_left;
-                AstSearchCondition  *_right;
-            } _bbody;
-            AstSearchCondition *_not_search_condition;  // for NOT, IS_TRUE ...
-            AstRowExpr         *_row_expr;
-            AstSelectStmt      *_exist_query;   // EXISTS COMP_EQ_ANY
-            struct {
-                AstRowExpr      *_r1;
-                AstRowExpr      *_r2;
-                AstRowExpr      *_r3;
-            } _tbody;
-        } u;
     };
 
-    class AstRowExpr : public IObject {
+    class AstBinaryOpExpr : public AstExpr {
     public:
-        enum ROW_EXPR_TYPE { PLUS = 1000, MINUS, BARBAR, MUL, DIV, REM, MOD, CARET,
-            U_PLUS, U_MINUS,
-            C_QUES, C_TRUE, C_FALSE, C_UNKNOWN, C_DEFAULT, C_NULL, C_VALUE,
-            COLUMN_REF, FUNC_CALL,
-            CASE_EXPR,
-            SC_LIST, SEARCH_COND, SUBQUERY};
-        ROW_EXPR_TYPE GetRowType() { return  _type; }
-        void SetRowType(ROW_EXPR_TYPE tp) { _type = tp; }
-        void SetLeft(AstRowExpr *left) { u._bbody._left = left; }
-        void SetRight(AstRowExpr *right) { u._bbody._right = right; }
-        void SetQuery(AstSelectStmt *s) { u._subquery = s; }
-        void SetExprList(AstExprList *rl) { u._expr_list = rl; }
-        void SetColumnRef(AstColumnRef *cr) { u._column_ref = cr; }
-        AstColumnRef *GetColumnRef() { return u._column_ref; }
-        void SetConstantValue(AstConstantValue *c) { u._value = c; }
-        void SetUnaryExpr(AstRowExpr *r) { u._u_row_expr = r; }
-        void SetFunc(AstFuncCall *f) { u._func_call = f; }
-        void SetSearchCondition(AstSearchCondition *sc) { u._sc = sc; }
+        AstBinaryOpExpr(EXPR_TYPE expr_type) : AstExpr(expr_type), _left(nullptr), _right(nullptr) {}
+        void SetLeft(AstExpr *left) { _left = left; }
+        AstExpr *GetLeft() { return _left; }
+        void SetRight(AstExpr *right) { _right = right; }
+        AstExpr *GetRight() { return _right; }
     private:
-        ROW_EXPR_TYPE _type;
-        union {
-            struct {
-                AstRowExpr      *_left;
-                AstRowExpr      *_right;
-            } _bbody;
-            AstRowExpr          *_u_row_expr;
-            AstConstantValue    *_value;
-            AstColumnRef        *_column_ref;
-            AstFuncCall         *_func_call;
-            AstCaseExpr         *_case;
-            AstExprList         *_expr_list;
-            AstSearchCondition  *_sc;
-            AstSelectStmt       *_subquery;
-        } u;
+        AstExpr   *_left;
+        AstExpr   *_right;
     };
 
-    class AstConstantValue : public IObject {
+    class AstUnaryOpExpr : public AstExpr {
     public:
-        enum CONSTANT_TYPE { C_NUMBER, C_STRING };
-        void SetConstantType(CONSTANT_TYPE type) { _type = type; }
+        AstUnaryOpExpr(EXPR_TYPE expr_type) : AstExpr(expr_type), _expr(nullptr) {}
+        void SetExpr(AstExpr *expr) { _expr = expr; }
+        AstExpr *GetExpr() { return _expr; }
+    private:
+        AstExpr     *_expr;
+    };
+
+    class AstExistsExpr : public AstExpr {
+    public:
+        AstExistsExpr() : AstExpr(EXISTS), _query(nullptr) {}
+        void SetQuery(AstSelectStmt *query) { _query = query; }
+        AstSelectStmt *GetQuery() { return _query; }
+    private:
+        AstSelectStmt   *_query;
+    };
+
+    class AstInExpr : public AstExpr {
+    public:
+        AstInExpr(bool has_not) : AstExpr(has_not ? NOT_IN : IN), _left(nullptr), _in(nullptr) {}
+        void SetLeft(AstExpr *left) { _left = left; }
+        AstExpr *GetLeft() { return _left; }
+        void SetIn(AstExpr *in) { _in = in; }
+        AstExpr *GetIn() { return _in; }
+    private:
+        AstExpr     *_left;
+        AstExpr     *_in;
+    };
+
+    class AstBetweenExpr : public AstExpr {
+    public:
+        AstBetweenExpr(bool has_not) : AstExpr(has_not ? NOT_BETWEEN : BETWEEN), _left(nullptr), _from(nullptr), _to(
+                nullptr) {}
+        void SetLeft(AstExpr *left) { _left = left; }
+        AstExpr *GetLeft() { return _left; }
+        void SetFrom(AstExpr *from) { _from = from; }
+        AstExpr *GetFrom() { return _from; }
+        void SetTo(AstExpr *to) { _to = to; }
+        AstExpr *GetTo() { return _to; }
+    private:
+        AstExpr     *_left;
+        AstExpr     *_from;
+        AstExpr     *_to;
+    };
+
+    class AstLikeExpr : public AstExpr {
+    public:
+        AstLikeExpr(bool has_not) : AstExpr(has_not ? NOT_LIKE : LIKE),
+            _left(nullptr), _right(nullptr), _escape(nullptr) {}
+        void SetLeft(AstExpr *left) { _left = left; }
+        AstExpr *GetLeft() { return _left; }
+        void SetRight(AstExpr *right) { _right = right; }
+        AstExpr *GetRight() { return _right; }
+        void SetEscape(AstExpr *escape) { _escape = escape; }
+        AstExpr *GetEscape() { return _escape; }
+    private:
+        AstExpr     *_left;
+        AstExpr     *_right;
+        AstExpr     *_escape;
+    };
+
+    class AstConstantValue : public AstExpr {
+    public:
+        AstConstantValue(EXPR_TYPE expr_type) : AstExpr(expr_type), u{0} {}
         void SetValue(int data) { u._int_data = data; }
         void SetValue(const std::string& value) { u._other_data = strdup(value.c_str()); }
     private:
-        CONSTANT_TYPE _type;
         union {
             int _int_data;
             char *_other_data;
         } u;
     };
 
-    class AstColumnRef : public IObject {
+    class AstColumnRef : public AstExpr {
     public:
-        void SetColumn(const std::vector<AstId*>& ids, bool is_wild) { _ids = ids; _is_use_wild = is_wild; }
+        AstColumnRef() : AstExpr(EXPR_COLUMN_REF) {}
+        void SetColumn(const AstIds& ids, bool is_wild) { _ids = ids; _is_use_wild = is_wild; }
         bool IsWild() { return _is_use_wild; }
-        std::vector<AstId*> GetColumn() { return _ids; }
+        const std::vector<AstId*>& GetColumn() { return _ids; }
     private:
-        std::vector<AstId*> _ids;
-        bool _is_use_wild;
+        AstIds  _ids;
+        bool    _is_use_wild;
     };
 
-    class AstFuncCall : public IObject {
+    class AstFuncCall : public AstExpr {
     public:
-        void SetFuncName(const std::vector<AstId*>& name) { _func_name = name; }
+        AstFuncCall() : AstExpr(EXPR_FUNC), _params(nullptr) {}
+        void SetFuncName(const AstIds& name) { _func_name = name; }
         void SetParams(AstExprList *params) { _params = params; }
     private:
-        std::vector<AstId*> _func_name;
+        AstIds           _func_name;
         AstExprList     *_params;       /* null means no param */
     };
 
-    class AstCaseExpr : public IObject {
+    class AstCaseExpr : public AstExpr {
+    public:
+        AstCaseExpr() : AstExpr(EXPR_CASE), _arg(nullptr), _else(nullptr) {}
+        void SetArg(AstExpr *arg) { _arg = arg; }
+        AstExpr *GetArg() { return _arg; }
+        void SetWhenList(const AstExprs& when_list) { _when_list = when_list; }
+        const AstExprs& GetWhenList() { return _when_list; }
+        void SetThenList(const AstExprs& then_list) { _then_list = then_list; }
+        const AstExprs& GetThenList() { return _then_list; }
+        void SetElse(AstExpr *els) { _else = els; }
+        AstExpr *GetElse() { return _else; }
     private:
-        AstSearchCondition      *_arg;      /* null means no arg */
-        std::vector<AstSearchCondition *> _when_list;
-        std::vector<AstSearchCondition *> _then_list;
-        AstSearchCondition      *_else;     /* null means no arg */
+        AstExpr      *_arg;      /* null means no arg */
+        AstExprs      _when_list;
+        AstExprs      _then_list;
+        AstExpr      *_else;
     };
 
-    class AstExprList : public IObject {
+    class AstExprList : public AstExpr {
     public:
-        void SetExprs(const std::vector<AstSearchCondition*>& exprs) { _exprs = exprs; }
-        std::vector<AstSearchCondition*> GetExprs() { return _exprs; }
+        AstExprList() : AstExpr(EXPR_LIST) {}
+        void SetExprs(const AstExprs& exprs) { _exprs = exprs; }
+        const AstExprs& GetExprs() { return _exprs; }
     private:
-        std::vector<AstSearchCondition*> _exprs;
+        AstExprs        _exprs;
     };
+
+    class AstSubqueryExpr : public AstExpr {
+    public:
+        AstSubqueryExpr() : AstExpr(EXPR_SUBQUERY), _subquery(nullptr) {}
+        void SetQuery(AstSelectStmt *query) { _subquery; }
+        AstSelectStmt *GetQuery() { return _subquery; }
+    private:
+        AstSelectStmt   *_subquery;
+    };
+
 }
 
 #endif

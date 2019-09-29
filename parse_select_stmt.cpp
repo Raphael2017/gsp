@@ -3,6 +3,8 @@
 #include "parse_expression.h"
 #include "parse_tableref.h"
 #include "sql_select_stmt.h"
+#include "sql_expression.h"
+#include "sql_table_ref.h"
 #include "parse_exception.h"
 #include "lex.h"
 
@@ -16,10 +18,10 @@ namespace GSP {
     AstQueryExpressionBody  *parse_query_term               (ILex *lex, ParseException *e);
     AstQueryExpressionBody  *parse_query_primary            (ILex *lex, ParseException *e);
 
-    std::vector<AstProjection*>         parse_projection_list           (ILex *lex, ParseException *e);
+    AstProjections                      parse_projection_list           (ILex *lex, ParseException *e);
     AstProjection                      *parse_projection                (ILex *lex, ParseException *e);
-    std::vector<AstGroupingElem*>       parse_groupby_list              (ILex *lex, ParseException *e);
-    std::vector<AstCommonTableExpr*>    parse_ctes_list                 (ILex *lex, ParseException *e);
+    AstGroupingElems                    parse_groupby_list              (ILex *lex, ParseException *e);
+    AstCommonTableExprs                 parse_ctes_list                 (ILex *lex, ParseException *e);
     AstCommonTableExpr                 *parse_cte                       (ILex *lex, ParseException *e);
 
 
@@ -35,7 +37,7 @@ namespace GSP {
                 return nullptr;
             }
             lex->next();
-            std::vector<AstOrderByItem*> items;
+            AstOrderByItems items;
             AstOrderByItem *order_by_item = parse_order_by_item(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (select_stmt);
@@ -178,13 +180,13 @@ namespace GSP {
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
-            std::vector<AstProjection*>  projection_list = parse_projection_list(lex, e);
+            AstProjections  projection_list = parse_projection_list(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (primary);
                 return nullptr;
             }
             primary->SetProjectionList(projection_list);
-            std::vector<AstTableRef*> tableref_list;
+            AstTableRefs tableref_list;
             if (lex->token()->type() == FROM) {
                 lex->next();
                 tableref_list = parse_tableref_list(lex, e);
@@ -215,7 +217,7 @@ namespace GSP {
                 if (tk1 == ALL || tk1 == DISTINCT) {
                     lex->next();
                 }
-                std::vector<AstGroupingElem*> group_by = parse_groupby_list(lex, e);
+                AstGroupingElems group_by = parse_groupby_list(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
                     delete (primary);
                     return nullptr;
@@ -262,7 +264,7 @@ namespace GSP {
             lex->next();
             with_clause->SetRecType(AstWithClause::RECURSIVE);
         }
-        std::vector<AstCommonTableExpr*> ctes = parse_ctes_list(lex, e);
+        AstCommonTableExprs ctes = parse_ctes_list(lex, e);
         if (e->_code != ParseException::SUCCESS) {
             delete (with_clause);
             return nullptr;
@@ -271,8 +273,8 @@ namespace GSP {
         return with_clause;
     }
 
-    std::vector<AstCommonTableExpr*> parse_ctes_list(ILex *lex, ParseException *e) {
-        std::vector<AstCommonTableExpr*> ctes;
+    AstCommonTableExprs parse_ctes_list(ILex *lex, ParseException *e) {
+        AstCommonTableExprs ctes;
         AstCommonTableExpr *cte = parse_cte(lex, e);
         if (e->_code != ParseException::SUCCESS) {
             return ctes;
@@ -303,7 +305,7 @@ namespace GSP {
         cte->SetCteName(name);
         if (lex->token()->type() == LPAREN) {
             lex->next();
-            std::vector<AstId*> columns = parse_ids(lex, e);
+            AstIds columns = parse_ids(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 delete (cte);
                 return nullptr;
@@ -330,8 +332,8 @@ namespace GSP {
         return cte;
     }
 
-    std::vector<AstProjection*> parse_projection_list(ILex *lex, ParseException *e) {
-        std::vector<AstProjection*> projections;
+    AstProjections parse_projection_list(ILex *lex, ParseException *e) {
+        AstProjections projections;
         AstProjection *projection = parse_projection(lex, e);
         if (e->_code != ParseException::SUCCESS) {
             return projections;
@@ -394,8 +396,8 @@ namespace GSP {
         return nullptr;
     }
 
-    std::vector<AstGroupingElem*> parse_groupby_list(ILex *lex, ParseException *e) {
-        std::vector<AstRowExpr*> exprs;
+    AstGroupingElems parse_groupby_list(ILex *lex, ParseException *e) {
+        AstGroupingElems exprs;
         AstRowExpr *row_expr = parse_row_expr(lex, e);
         if (e->_code != ParseException::SUCCESS) {
             return exprs;
