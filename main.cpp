@@ -1,12 +1,98 @@
 #include <iostream>
 #include "lex.h"
+#include "parse_expression.h"
 #include "parse_select_stmt.h"
 #include "parse_exception.h"
 #include "sql_select_stmt.h"
 #include "sql_table_ref.h"
+#include "sql_expression.h"
 #include <time.h>
 
+enum BOOL_CONSTANT { BC_TRUE, BC_FALSE, BC_UNKNOWN };
 
+enum OPER { OP_OR, OP_AND, OP_GT, OP_LT };
+
+unsigned int make_new_label() {
+    static unsigned int i = 1;
+    return i++;
+}
+
+struct Instruction {
+    enum { PUSH_CONSTANT, PUSH_VARIABLE, EXEC_OPERATOR, JUMP, C_JUMP, LAB } _type;
+    union {
+        int _constant;
+        char *_var_name;
+        OPER _op;
+        unsigned int _jump_label;
+        unsigned int _lab;
+        struct {
+            BOOL_CONSTANT _when;
+            unsigned int _c_jump_label;
+        } _c_jump;
+    } u;
+};
+
+Instruction *make_c_jump(BOOL_CONSTANT when, unsigned int label) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::C_JUMP;
+    ins->u._c_jump._when = when;
+    ins->u._c_jump._c_jump_label = label;
+    return ins;
+}
+
+Instruction *make_jump(unsigned int label) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::JUMP;
+    ins->u._jump_label = label;
+    return ins;
+}
+
+Instruction *make_exec_op(OPER op) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::EXEC_OPERATOR;
+    ins->u._op = op;
+    return ins;
+}
+
+Instruction *make_lb(unsigned int label) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::LAB;
+    ins->u._lab = label;
+}
+
+void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& instructions) {
+    switch (condition->GetExprType()) {
+        case GSP::AstSearchCondition::OR: {
+            GSP::AstBinaryOpExpr *or_expr = dynamic_cast<GSP::AstBinaryOpExpr*>(condition);
+            translate(or_expr->GetLeft(), instructions);
+            unsigned int lab1 = make_new_label();
+            Instruction *cjmp = make_c_jump(BC_TRUE, lab1);
+            instructions.push_back(cjmp);
+            translate(or_expr->GetRight(), instructions);
+            instructions.push_back(make_exec_op(OP_OR));
+            unsigned int lab2 = make_new_label();
+            instructions.push_back(make_jump(lab2));
+            instructions.push_back(make_lb(lab1));
+            instructions.push_back(make_lb(lab2));
+        } break;
+        case GSP::AstSearchCondition::AND: {
+            GSP::AstBinaryOpExpr *or_expr = dynamic_cast<GSP::AstBinaryOpExpr*>(condition);
+            translate(or_expr->GetLeft(), instructions);
+            unsigned int lab1 = make_new_label();
+            Instruction *cjmp = make_c_jump(BC_FALSE, lab1);
+            instructions.push_back(cjmp);
+            translate(or_expr->GetRight(), instructions);
+            instructions.push_back(make_exec_op(OP_AND));
+            unsigned int lab2 = make_new_label();
+            instructions.push_back(make_jump(lab2));
+            instructions.push_back(make_lb(lab1));
+            instructions.push_back(make_lb(lab2));
+        } break;
+        case GSP::AstSearchCondition::COMP_GT: {} break;
+        case GSP::AstSearchCondition::COMP_LT: {} break;
+        default: { assert(false); } break;
+    }
+}
 
 int main() {
     std::string sql = "SELECT a FROM (A JOIN B ON m=n), (SELECT m FROM PP) QQ";
@@ -69,7 +155,8 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
-    sql = "SELECT (1+2)*3 FROM MN WHERE (SELECT 1 FROM P) > 0";
+    sql = "SELECT * FROM table1 WHERE NOT EXISTS (SELECT * FROM table2 WHERE table1.field1=table2.field1);";
+    //sql = "SELECT (1+2)*3 FROM MN WHERE (SELECT 1 FROM P) > 0";
 
     //sql = "SELECT a FROM B WHERE \"mmp\" = (SELECT * FROM C GROUP BY mmm ORDER BY qwe)";
 
@@ -80,6 +167,24 @@ int main() {
 
    // sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
    //       " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
+
+    {
+        std::string condition = "M>3 OR (M<-1 AND N>3)";
+        GSP::ILex *lex = GSP::make_lex(condition.c_str());
+        lex->next();
+        GSP::ParseException e;
+        GSP::AstSearchCondition *search_condition = GSP::parse_search_condition(lex, &e);
+
+
+
+
+
+
+        delete (lex);
+        delete (search_condition);
+    }
+
+
     clock_t start = clock();
     for (int i = 0; i < 10000; ++i) {
         GSP::ILex *lex = GSP::make_lex(sql.c_str());
