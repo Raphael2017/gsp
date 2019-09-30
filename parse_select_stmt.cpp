@@ -76,10 +76,7 @@ namespace GSP {
             return nullptr;
         }
 
-        AstSelectStmt *select_stmt = new AstSelectStmt;
-        select_stmt->SetWithClause(with_clause);
-        select_stmt->SetBody(body);
-        return select_stmt;
+        return new AstSelectStmt(with_clause, body, {});
     }
 
     AstQueryExpressionBody::SET_TYPE mk_set_type(TokenType tk1, TokenType tk2) {
@@ -111,19 +108,17 @@ namespace GSP {
         for (; tkp == UNION || tkp == EXCEPT; tkp = lex->token()->type()) {
             lex->next();
             AstQueryExpressionBody *left = query_term;
-            query_term = new AstQuerySet;
-            dynamic_cast<AstQuerySet*>(query_term)->SetLeft(left);
             auto all_distinct = lex->token()->type();
-            dynamic_cast<AstQuerySet*>(query_term)->SetSetType(mk_set_type(tkp, all_distinct));
+            auto set_type = mk_set_type(tkp, all_distinct);
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
             AstQueryExpressionBody *right = parse_query_term(lex, e);
             if (e->_code != ParseException::SUCCESS) {
-                delete (query_term);
+                delete (left);
                 return nullptr;
             }
-            dynamic_cast<AstQuerySet*>(query_term)->SetRight(right);
+            query_term = new AstQuerySet(set_type, left, right);
         }
         return query_term;
     }
@@ -138,19 +133,17 @@ namespace GSP {
         for (; tkp == INTERSECT; tkp = lex->token()->type()) {
             lex->next();
             AstQueryExpressionBody *left = primary;
-            primary = new AstQuerySet;
-            dynamic_cast<AstQuerySet*>(primary)->SetLeft(left);
             auto all_distinct = lex->token()->type();
-            dynamic_cast<AstQuerySet*>(primary)->SetSetType(mk_set_type(tkp, all_distinct));
+            auto set_type = mk_set_type(tkp, all_distinct);
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
             AstQueryExpressionBody *right = parse_query_primary(lex, e);
             if (e->_code != ParseException::SUCCESS) {
-                delete (primary);
+                delete (left);
                 return nullptr;
             }
-            dynamic_cast<AstQuerySet*>(primary)->SetRight(right);
+            primary = new AstQuerySet(set_type, left, right);
         }
         return primary;
     }
@@ -172,11 +165,8 @@ namespace GSP {
         if (lex->token()->type() == SELECT) {
             AstQueryPrimary *primary = nullptr;
             lex->next();
-            primary = new AstQueryPrimary;
-
             auto all_distinct = lex->token()->type();
-            AstQueryPrimary::SELECT_TYPE st = mk_select_type(all_distinct);
-            primary->SetSelectType(st);
+            primary = new AstQueryPrimary(mk_select_type(all_distinct));
             if (all_distinct == ALL || all_distinct == DISTINCT) {
                 lex->next();
             }
@@ -259,18 +249,16 @@ namespace GSP {
     AstWithClause *parse_with_clause(ILex *lex, ParseException *e) {
         assert(lex->token()->type() == WITH);
         lex->next();
-        AstWithClause *with_clause = new AstWithClause;
+        auto has_recursive = AstWithClause::NIL_RECURSIVE;
         if (lex->token()->type() == RECURSIVE) {
             lex->next();
-            with_clause->SetRecType(AstWithClause::RECURSIVE);
+            has_recursive = AstWithClause::RECURSIVE;
         }
         AstCommonTableExprs ctes = parse_ctes_list(lex, e);
         if (e->_code != ParseException::SUCCESS) {
-            delete (with_clause);
             return nullptr;
         }
-        with_clause->SetCtes(ctes);
-        return with_clause;
+        return new AstWithClause(has_recursive, ctes);
     }
 
     AstCommonTableExprs parse_ctes_list(ILex *lex, ParseException *e) {
@@ -301,8 +289,7 @@ namespace GSP {
             return nullptr;
         }
         AstId *name = parse_id(lex, e);
-        AstCommonTableExpr *cte = new AstCommonTableExpr;
-        cte->SetCteName(name);
+        AstCommonTableExpr *cte = new AstCommonTableExpr(name);
         if (lex->token()->type() == LPAREN) {
             lex->next();
             AstIds columns = parse_ids(lex, e);
@@ -359,8 +346,12 @@ namespace GSP {
         if (e->_code != ParseException::SUCCESS) {
             return nullptr;
         }
-        AstProjection *proj = new AstProjection;
-        proj->SetExpr(row_expr);
+        AstProjection *proj = new AstProjection(row_expr, nullptr);
+        if (row_expr->GetExprType() == AstRowExpr::EXPR_COLUMN_REF &&
+            dynamic_cast<AstColumnRef*>(row_expr)->GetColumn().size() == 0 &&
+            dynamic_cast<AstColumnRef*>(row_expr)->IsWild()) /* here means only * */ {
+            return proj;
+        }
         if (lex->token()->type() == AS) {
             lex->next();
             if (lex->token()->type() != ID) {
@@ -391,9 +382,7 @@ namespace GSP {
         } else {
             ot = AstOrderByItem::NIL;
         }
-        AstOrderByItem *r = new AstOrderByItem;
-        r->SetOrderItem(ot, expr);
-        return nullptr;
+        return new AstOrderByItem(ot, expr);
     }
 
     AstGroupingElems parse_groupby_list(ILex *lex, ParseException *e) {

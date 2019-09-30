@@ -37,9 +37,7 @@ namespace GSP {
                 delete (term);
                 return nullptr;
             }
-            AstBinaryOpExpr *or_expr = new AstBinaryOpExpr(AstSearchCondition::OR);
-            or_expr->SetLeft(l); or_expr->SetRight(r);
-            term = or_expr;
+            term = new AstBinaryOpExpr(AstSearchCondition::OR, l, r);
         }
         return term;
     }
@@ -57,9 +55,7 @@ namespace GSP {
                 delete (factor);
                 return nullptr;
             }
-            AstBinaryOpExpr *and_expr = new AstBinaryOpExpr(AstSearchCondition::AND);
-            and_expr->SetLeft(l); and_expr->SetRight(r);
-            factor = and_expr;
+            factor = new AstBinaryOpExpr(AstSearchCondition::AND, l, r);
         }
         return factor;
     }
@@ -71,9 +67,7 @@ namespace GSP {
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
-            AstUnaryOpExpr *r = new AstUnaryOpExpr(AstSearchCondition::NOT);
-            r->SetExpr(cd);
-            return r;
+            return new AstUnaryOpExpr(AstSearchCondition::NOT, cd);
         }
         return parse_boolean_test(lex, e);
     }
@@ -108,9 +102,7 @@ namespace GSP {
                 e->SetFail({NOT, TRUE, FALSE, UNKNOWN}, lex);
                 return nullptr;
             }
-            AstUnaryOpExpr *unary_expr = new AstUnaryOpExpr(expr_type);
-            unary_expr->SetExpr(primary);
-            primary = unary_expr;
+            primary = new AstUnaryOpExpr(expr_type, primary);
         }
         return primary;
     }
@@ -172,8 +164,7 @@ namespace GSP {
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
-            AstExistsExpr *exists_expr = new AstExistsExpr;
-            exists_expr->SetQuery(stmt);
+            AstExistsExpr *exists_expr = new AstExistsExpr(stmt);
             if (lex->token()->type() != RPAREN) {
                 e->SetFail(RPAREN, lex);
                 delete (exists_expr);
@@ -211,10 +202,7 @@ namespace GSP {
                         e->SetFail(RPAREN, lex);
                         return nullptr;
                     }
-                    AstSearchCondition *r = new AstSearchCondition;
-                    r->SetExprType(expr_type);
-                    r->SetRowExpr1(row_expr);
-                    r->SetExist(stmt);
+                    AstQuantifiedCompareExpr *r = new AstQuantifiedCompareExpr(expr_type, row_expr, stmt);
                     return r;
                 }
                 else {
@@ -224,13 +212,8 @@ namespace GSP {
                         delete (row_expr);
                         return nullptr;
                     }
-                    AstSearchCondition *r = new AstSearchCondition;
-                    r->SetExprType(expr_type);
-                    r->SetRowExpr3(row_expr, rhs, nullptr);
-                    return r;
+                    return new AstBinaryOpExpr(expr_type, row_expr, rhs);
                 }
-
-
             }
             else if (tk1 == IS) {
                 lex->next();
@@ -245,10 +228,7 @@ namespace GSP {
                     return nullptr;
                 }
                 expr_type = has_not ? AstSearchCondition::IS_NOT_NULL : AstSearchCondition::IS_NULL;
-                AstSearchCondition *r = new AstSearchCondition;
-                r->SetExprType(expr_type);
-                r->SetRowExpr1(row_expr);
-                return r;
+                return new AstUnaryOpExpr(expr_type, row_expr);
             }
             else if (tk1 == NOT || tk1 == BETWEEN || tk1 == IN || tk1 == LIKE) {
                 bool has_not = false;
@@ -277,10 +257,7 @@ namespace GSP {
                         delete (from);
                         return nullptr;
                     }
-                    AstSearchCondition *r = new AstSearchCondition;
-                    r->SetExprType(expr_type);
-                    r->SetRowExpr3(row_expr, from, to);
-                    return r;
+                    return new AstBetweenExpr(expr_type, row_expr, from, to);
                 }
                 else if (tk1 == IN) {
                     lex->next();
@@ -290,17 +267,14 @@ namespace GSP {
                         delete (row_expr);
                         return nullptr;
                     }
-                    if (in_what->GetRowType() != AstRowExpr::SUBQUERY &&
-                            in_what->GetRowType() != AstRowExpr::SC_LIST) {
+                    if (in_what->GetExprType() != AstRowExpr::EXPR_SUBQUERY &&
+                            in_what->GetExprType() != AstRowExpr::EXPR_LIST) {
                         delete (row_expr);
                         delete (in_what);
                         e->_code = ParseException::FAIL;    /* todo */
                         return nullptr;
                     }
-                    AstSearchCondition *r = new AstSearchCondition;
-                    r->SetExprType(expr_type);
-                    r->SetRowExpr3(row_expr, in_what, nullptr);
-                    return r;
+                    return new AstInExpr(expr_type, row_expr, in_what);
                 }
                 else if (tk1 == LIKE) {
                     lex->next();
@@ -310,10 +284,7 @@ namespace GSP {
                         delete(row_expr);
                         return nullptr;
                     }
-                    AstSearchCondition *r = new AstSearchCondition;
-                    r->SetExprType(expr_type);
-                    r->SetRowExpr3(row_expr, like_what, nullptr);
-                    return r;
+                    return new AstLikeExpr(expr_type, row_expr, like_what, nullptr);
                 }
                 else {
                     e->SetFail({BETWEEN, IN, LIKE}, lex);
@@ -321,15 +292,12 @@ namespace GSP {
                     return nullptr;
                 }
             } else {
-                AstSearchCondition *r = new AstSearchCondition;
-                r->SetExprType(AstSearchCondition::ROW_EXPR);
-                r->SetRowExpr1(row_expr);
-                return r;
+                return row_expr;
             }
         }
     }
 
-    AstRowExpr::ROW_EXPR_TYPE mk_row_expr_type(TokenType tkp) {
+    AstRowExpr::EXPR_TYPE mk_row_expr_type(TokenType tkp) {
         switch (tkp) {
             case PLUS : return AstRowExpr::PLUS;
             case MINUS : return AstRowExpr::MINUS;
@@ -356,10 +324,7 @@ namespace GSP {
                 delete (factor0);
                 return nullptr;
             }
-            factor0 = new AstRowExpr;
-            factor0->SetRowType(mk_row_expr_type(op));
-            factor0->SetLeft(left);
-            factor0->SetRight(right);
+            factor0 = new AstBinaryOpExpr(mk_row_expr_type(op), left, right);
         }
         return factor0;
     }
@@ -378,10 +343,7 @@ namespace GSP {
                 delete (factor1);
                 return nullptr;
             }
-            factor1 = new AstRowExpr;
-            factor1->SetRowType(mk_row_expr_type(tkp));
-            factor1->SetLeft(left);
-            factor1->SetRight(right);
+            factor1 = new AstBinaryOpExpr(mk_row_expr_type(tkp), left, right);
         }
         return factor1;
     }
@@ -400,10 +362,7 @@ namespace GSP {
                 delete (primary);
                 return nullptr;
             }
-            primary = new AstRowExpr;
-            primary->SetRowType(AstRowExpr::CARET);
-            primary->SetLeft(left);
-            primary->SetRight(right);
+            primary = new AstBinaryOpExpr(AstExpr::CARET, left, right);
         }
         return primary;
     }
@@ -415,15 +374,12 @@ namespace GSP {
         }
         else if (tk1 == PLUS || tk1 == MINUS) {
             lex->next();
-            AstRowExpr::ROW_EXPR_TYPE row_expr_type = tk1 == PLUS ? AstRowExpr::U_PLUS : AstRowExpr::U_MINUS;
+            AstRowExpr::EXPR_TYPE row_expr_type = tk1 == PLUS ? AstRowExpr::U_POSITIVE : AstRowExpr::U_NEGATIVE;
             AstRowExpr *r1 = parse_row_primary(lex, e);
             if (e->_code != ParseException::SUCCESS) {
                 return nullptr;
             }
-            AstRowExpr *r = new AstRowExpr;
-            r->SetRowType(row_expr_type);
-            r->SetUnaryExpr(r1);
-            return r;
+            return new AstUnaryOpExpr(row_expr_type, r1);
         }
         else if (tk1 == CASE) {
             return parse_case_expr(lex, e);
@@ -435,20 +391,17 @@ namespace GSP {
                 if (e->_code != ParseException::SUCCESS) {
                     return nullptr;
                 }
-                assert(m->GetRowType() == AstRowExpr::COLUMN_REF);
-                if (!m->GetColumnRef()->IsWild() && lex->token()->type() == LPAREN) {
-                    std::vector<AstId*> ids= m->GetColumnRef()->GetColumn();
-                    m->GetColumnRef()->SetColumn({}, false);
-                    delete (m);
+                AstColumnRef *col_ref = dynamic_cast<AstColumnRef*>(m);
+                if (!col_ref->IsWild() && lex->token()->type() == LPAREN) {
+                    std::vector<AstId*> ids= col_ref->GetColumn();
+                    col_ref->SetColumn({}, false);
+                    delete (col_ref);
                     lex->next();
-                    AstExprList *exprs = nullptr;
-                    if (lex->token()->type() != RPAREN) {
-                        exprs = parse_expr_list(lex, e);
-                        if (e->_code != ParseException::SUCCESS) {
-                            for (auto it : ids) delete (it);
-                            ids.clear();
-                            return nullptr;
-                        }
+                    AstExprList *exprs = parse_expr_list(lex, e);
+                    if (e->_code != ParseException::SUCCESS) {
+                        for (auto it : ids) delete (it);
+                        ids.clear();
+                        return nullptr;
                     }
                     if (lex->token()->type() != RPAREN) {
                         for (auto it : ids) delete (it);
@@ -458,12 +411,7 @@ namespace GSP {
                         return nullptr;
                     }
                     lex->next();
-                    AstRowExpr *r = new AstRowExpr;
-                    r->SetRowType(AstRowExpr::FUNC_CALL);
-                    AstFuncCall *f = new AstFuncCall;
-                    r->SetFunc(f);
-                    f->SetFuncName(ids); f->SetParams(exprs);
-                    return r;
+                    return new AstFuncCall(ids, exprs);
                 }
                 else return m;
             }
@@ -478,17 +426,24 @@ namespace GSP {
                 lex_c->next();
                 lex->recover(lex_c);
                 delete (lex_c);
-                AstRowExpr *r = new AstRowExpr;
-                r->SetRowType(AstRowExpr::SUBQUERY);
-                r->SetQuery(stmt);
-                return r;
+                return new AstSubqueryExpr(stmt);
             } else {    /* backtrack */
-                delete (lex_c);
+                if (e->_code == ParseException::SUCCESS && lex_c->token()->type() != RPAREN) {
+                    e->SetFail(RPAREN, lex_c);
+                }
+                auto pos = lex_c->cur_pos();
+                ParseException e1 = *e;
                 e->_code = ParseException::SUCCESS; e->_detail = "";
                 expr_list = parse_expr_list(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
+                    if (lex->cur_pos() < pos) {
+                        *e = e1;
+                        lex->recover(lex_c);
+                    }
+                    delete (lex_c);
                     return nullptr;
                 }
+                delete (lex_c);
                 if (lex->token()->type() != RPAREN) {
                     delete (expr_list);
                     e->SetFail(RPAREN, lex);
@@ -499,22 +454,11 @@ namespace GSP {
                 std::vector<AstSearchCondition*> scs = expr_list->GetExprs();
                 assert(scs.size() > 0);
                 if (scs.size() == 1) {
-                    AstSearchCondition *sc = scs[0];
+                    r = scs[0];
                     expr_list->SetExprs({});
                     delete (expr_list);
-                    if (sc->GetExprType() == AstSearchCondition::ROW_EXPR) {
-                        r = sc->GetRowExpr1();
-                        sc->SetRowExpr1(nullptr);
-                        delete (sc);
-                    } else {
-                        r = new AstRowExpr;
-                        r->SetRowType(AstRowExpr::SEARCH_COND);
-                        r->SetSearchCondition(sc);
-                    }
                 } else {
-                    r = new AstRowExpr;
-                    r->SetRowType(AstRowExpr::SC_LIST);
-                    r->SetExprList(expr_list);
+                    r = expr_list;
                 }
                 return r;
             }
@@ -526,33 +470,27 @@ namespace GSP {
     }
 
     AstRowExpr *parse_constant_expr(ILex *lex, ParseException *e) {
-        AstRowExpr *r = new AstRowExpr;
+        AstConstantValue *r = nullptr;
         if (lex->token()->type() == TRUE) {
             lex->next();
-            r->SetRowType(AstRowExpr::C_TRUE);
+            r = new AstConstantValue(AstRowExpr::C_TRUE);
         } else if (lex->token()->type() == FALSE) {
             lex->next();
-            r->SetRowType(AstRowExpr::C_FALSE);
+            r = new AstConstantValue(AstRowExpr::C_FALSE);
         } else if (lex->token()->type() == NULLX) {
             lex->next();
-            r->SetRowType(AstRowExpr::C_NULL);
+            r = new AstConstantValue(AstRowExpr::C_NULL);
         } else if (lex->token()->type() == NUMBER) {
-            r->SetRowType(AstRowExpr::C_VALUE);
-            AstConstantValue *c = new AstConstantValue;
-            c->SetConstantType(AstConstantValue::C_NUMBER);
-            c->SetValue(lex->token()->word_semantic());
-            r->SetConstantValue(c);
+            r = new AstConstantValue(AstRowExpr::C_NUMBER);
+            r->SetValue(lex->token()->word_semantic());
             lex->next();
         } else if (lex->token()->type() == STR_LITERAL) {
-            r->SetRowType(AstRowExpr::C_VALUE);
-            AstConstantValue *c = new AstConstantValue;
-            c->SetConstantType(AstConstantValue::C_STRING);
-            c->SetValue(lex->token()->word_semantic());
-            r->SetConstantValue(c);
+            r = new AstConstantValue(AstRowExpr::C_STRING);
+            r->SetValue(lex->token()->word_semantic());
             lex->next();
         } else if (lex->token()->type() == QUES) {
             lex->next();
-            r->SetRowType(AstRowExpr::C_QUES);
+            r = new AstConstantValue(AstRowExpr::C_QUES);
         } else {
             assert(false);
         }
@@ -567,12 +505,7 @@ namespace GSP {
     AstRowExpr *parse_columnref_expr(ILex *lex, ParseException *e) {
         if (lex->token()->type() == STAR) {
             lex->next();
-            AstColumnRef *r = new AstColumnRef;
-            r->SetColumn({}, true);
-            AstRowExpr *re = new AstRowExpr;
-            re->SetRowType(AstRowExpr::COLUMN_REF);
-            re->SetColumnRef(r);
-            return re;
+            return new AstColumnRef({}, true);
         }
 
         std::vector<AstId*> ids;
@@ -598,12 +531,7 @@ namespace GSP {
                 ids.push_back(id);
             }
         }
-        AstColumnRef *r = new AstColumnRef;
-        r->SetColumn(ids, has_star);
-        AstRowExpr *re = new AstRowExpr;
-        re->SetRowType(AstRowExpr::COLUMN_REF);
-        re->SetColumnRef(r);
-        return re;
+        return new AstColumnRef(ids, has_star);
     }
 
     AstExprList *parse_expr_list(ILex *lex, ParseException *e) {
@@ -623,8 +551,6 @@ namespace GSP {
             }
             exprs.push_back(expr);
         }
-        AstExprList *r = new AstExprList;
-        r->SetExprs(exprs);
-        return r;
+        return new AstExprList(exprs);
     }
 }

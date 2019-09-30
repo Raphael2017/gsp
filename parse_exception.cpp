@@ -91,8 +91,7 @@ namespace GSP {
             e->SetFail(ID, lex);
             return nullptr;
         }
-        AstId *id = new AstId;
-        id->SetId(lex->token()->word_semantic());
+        AstId *id = new AstId(lex->token()->word_semantic());
         lex->next();
         return id;
     }

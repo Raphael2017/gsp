@@ -5,7 +5,8 @@
 
 namespace GSP {
     /* AstTableJoin */
-    AstTableJoin::AstTableJoin() : AstTableRef(AST_TABLE_JOIN), _left(nullptr), _right(nullptr), _on_search_condition(nullptr) {}
+    AstTableJoin::AstTableJoin(TABLE_REF_TYPE join_type, AstTableRef *left, AstTableRef *right, AstSearchCondition *on) : AstTableRef(AST_TABLE_JOIN),
+        _join_type(join_type), _left(left), _right(right), _on_search_condition(on) {}
 
     AstTableJoin::~AstTableJoin() {
         delete (_left); _left = nullptr;
@@ -50,11 +51,13 @@ namespace GSP {
     }
 
     /* AstRelation */
-    AstRelation::AstRelation() : AstTableRef(AST_RELATION) {}
+    AstRelation::AstRelation(const AstIds& ids, AstId *alias) : AstTableRef(AST_RELATION), _ids(ids), _alias(alias) {}
 
     AstRelation::~AstRelation() {
         for (auto it : _ids) delete (it);
         _ids.clear();
+        delete (_alias);
+        _alias = nullptr;
     }
 
     AstTableRef::TABLE_REF_TYPE AstRelation::GetTableRefType() {
@@ -71,7 +74,8 @@ namespace GSP {
     }
 
     /* AstSubQueryTableRef */
-    AstSubQueryTableRef::AstSubQueryTableRef() : AstTableRef(AST_SUBQUERY_TABLE_REF), _subquery(nullptr), _alias(nullptr) {}
+    AstSubQueryTableRef::AstSubQueryTableRef(AstSelectStmt *subquery, AstId *alias, const AstIds& col_alias) : AstTableRef(AST_SUBQUERY_TABLE_REF),
+    _subquery(subquery), _alias(alias), _col_alias(col_alias) {}
 
     AstSubQueryTableRef::~AstSubQueryTableRef() {
         delete (_subquery); _subquery = nullptr;

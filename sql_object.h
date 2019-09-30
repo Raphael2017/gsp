@@ -6,23 +6,18 @@
 
 namespace GSP {
     enum SQLObjectType {
+        AST_ANY,
         AST_SELECT_STMT,
-        AST_WITH_CLAUSE,
-        AST_COMMON_TABLE_EXPR,
         AST_QUERY_SET,
         AST_QUERY_PRIMARY,
-        AST_PROJECTION,
-        AST_ORDER_BY_ITEM,
         AST_TABLE_JOIN,
-        AST_TABLE_CROSS_JOIN,
-        AST_TABLE_NATURAL_JOIN,
         AST_RELATION,
         AST_SUBQUERY_TABLE_REF,
         AST_EXPR,
-
     };
     class IObject {
     public:
+        IObject () : _parent(nullptr), _obj_type(AST_ANY) {}
         IObject (SQLObjectType obj_type) : _parent(nullptr), _obj_type(obj_type) {}
         virtual ~IObject() {}
         virtual SQLObjectType GetObjectType() final { return _obj_type; };
@@ -33,8 +28,9 @@ namespace GSP {
         SQLObjectType        _obj_type;
     };
 
-    class AstId : public IObject {
+    class AstId {
     public:
+        AstId(const std::string& id) : _id(id) {}
         void SetId(const std::string& id) { _id = id; }
     private:
         std::string     _id;

@@ -4,7 +4,8 @@
 
 namespace GSP {
     /* AstSelectStmt */
-    AstSelectStmt::AstSelectStmt() : IObject(AST_SELECT_STMT), _with_clasue(nullptr), _query_expression_body(nullptr) {}
+    AstSelectStmt::AstSelectStmt(AstWithClause *with_clause, AstQueryExpressionBody *query_expression_body, const AstOrderByItems& order_by_items) : IObject(AST_SELECT_STMT),
+    _with_clasue(with_clause), _query_expression_body(query_expression_body), _order_by_items(order_by_items) {}
 
     AstSelectStmt::~AstSelectStmt() {
         delete (_with_clasue); _with_clasue = nullptr;
@@ -38,7 +39,7 @@ namespace GSP {
     }
 
     /* AstWithClause */
-    AstWithClause::AstWithClause() : IObject(AST_WITH_CLAUSE) {}
+    AstWithClause::AstWithClause(REC_TYPE rec_type, const AstCommonTableExprs& ctes) : _rec_type(rec_type), _ctes(ctes) {}
 
     AstWithClause::~AstWithClause() {
         for (auto it : _ctes) delete (it);
@@ -62,7 +63,7 @@ namespace GSP {
     }
 
     /* AstCommonTableExpr */
-    AstCommonTableExpr::AstCommonTableExpr() :IObject(AST_COMMON_TABLE_EXPR), _cte_name(nullptr), _query(nullptr) {}
+    AstCommonTableExpr::AstCommonTableExpr(AstId *cte_name) : _cte_name(cte_name), _query(nullptr) {}
 
     AstCommonTableExpr::~AstCommonTableExpr() {
         delete (_cte_name); _cte_name = nullptr;
@@ -96,7 +97,8 @@ namespace GSP {
     }
 
     /* AstQuerySet */
-    AstQuerySet::AstQuerySet() : AstQueryExpressionBody(AST_QUERY_SET), _left(nullptr), _right(nullptr) {}
+    AstQuerySet::AstQuerySet(SET_TYPE set_type, AstQueryExpressionBody *left, AstQueryExpressionBody *right) : AstQueryExpressionBody(AST_QUERY_SET),
+    _set_type(set_type), _left(left), _right(right) {}
 
     AstQuerySet::~AstQuerySet() {
         delete (_left); _left = nullptr;
@@ -128,7 +130,8 @@ namespace GSP {
     }
 
     /* AstQueryPrimary */
-    AstQueryPrimary::AstQueryPrimary() : AstQueryExpressionBody(AST_QUERY_PRIMARY), _where_search_condition(nullptr), _having_search_condition(nullptr) {}
+    AstQueryPrimary::AstQueryPrimary(SELECT_TYPE select_type) : AstQueryExpressionBody(AST_QUERY_PRIMARY),
+        _select_type(select_type), _where_search_condition(nullptr), _having_search_condition(nullptr) {}
 
     AstQueryPrimary::~AstQueryPrimary() {
         for (auto it : _projection_list) delete (it);
@@ -201,7 +204,7 @@ namespace GSP {
     }
 
     /* AstProjection */
-    AstProjection::AstProjection() : IObject(AST_PROJECTION), _expr(nullptr), _alias(nullptr) {}
+    AstProjection::AstProjection(AstRowExpr *expr, AstId *alias) : _expr(expr), _alias(alias) {}
 
     AstProjection::~AstProjection() {
         delete (_expr); _expr = nullptr;
@@ -225,7 +228,7 @@ namespace GSP {
     }
 
     /* AstOrderByItem */
-    AstOrderByItem::AstOrderByItem() : IObject(AST_ORDER_BY_ITEM), _expr(nullptr) {}
+    AstOrderByItem::AstOrderByItem(ORDER_TYPE order_type, AstRowExpr *expr) : _order_type(order_type), _expr(expr) {}
 
     AstOrderByItem::~AstOrderByItem() {
         delete (_expr); _expr = nullptr;

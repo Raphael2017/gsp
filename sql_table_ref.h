@@ -8,7 +8,8 @@ namespace GSP {
 
     class AstRelation;
     class AstSelectStmt;
-    class AstSearchCondition;
+    class AstExpr;
+    typedef AstExpr                             AstSearchCondition;
 
     class AstTableRef : public IObject {
     public:
@@ -30,7 +31,7 @@ namespace GSP {
 
     class AstTableJoin : public AstTableRef {
     public:
-        AstTableJoin();
+        AstTableJoin(TABLE_REF_TYPE join_type, AstTableRef *left, AstTableRef *right, AstSearchCondition *on);
         ~AstTableJoin();
         TABLE_REF_TYPE      GetTableRefType() override;
         void                SetJoinType(TABLE_REF_TYPE tp);
@@ -50,7 +51,7 @@ namespace GSP {
 
     class AstRelation : public AstTableRef {
     public:
-        AstRelation();
+        AstRelation(const AstIds& ids, AstId *alias);
         ~AstRelation();
         TABLE_REF_TYPE  GetTableRefType() override;
         void            SetRelationAndAlias(const AstIds& ids, AstId *alias);
@@ -62,7 +63,7 @@ namespace GSP {
 
     class AstSubQueryTableRef : public AstTableRef {
     public:
-        AstSubQueryTableRef();
+        AstSubQueryTableRef(AstSelectStmt *subquery, AstId *alias, const AstIds& col_alias);
         ~AstSubQueryTableRef();
         TABLE_REF_TYPE  GetTableRefType() override;
         void            SetQuery(AstSelectStmt *subquery, AstId *alias, const AstIds& col_alias);

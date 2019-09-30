@@ -69,30 +69,26 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
-
+    sql = "SELECT (1+2)*3 FROM MN WHERE (SELECT 1 FROM P) > 0";
 
     //sql = "SELECT a FROM B WHERE \"mmp\" = (SELECT * FROM C GROUP BY mmm ORDER BY qwe)";
 
     //sql = "   (SELECT * FROM SALES INTERSECT SELECT * FROM SALES) INTERSECT ((SELECT * FROM SALES))";
 
-    sql = "SELECT * FROM A CROSS JOIN B LEFT JOIN C ON m=n";
-    sql = "SELECT * FROM QAZ WHERE 1 > ( (SELECT 1 UNION SELECT 1) INTERSECT SELECT 2 )";
+    //sql = "SELECT * FROM A CROSS JOIN B LEFT JOIN C ON m=n";
+    //sql = "SELECT * FROM QAZ WHERE 1 > ( (SELECT 1 UNION SELECT 1) INTERSECT SELECT 2 )";
 
-    sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
-          " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
-
-    clock_t start = 0, finish = 0;
-    start = clock();
+   // sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
+   //       " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
+    clock_t start = clock();
     for (int i = 0; i < 10000; ++i) {
         GSP::ILex *lex = GSP::make_lex(sql.c_str());
         GSP::ParseException e;
         lex->next();
         GSP::AstSelectStmt *stmt = GSP::parse_select_stmt(lex, &e);
-        //for (;lex->token()->type() != GSP::END_P; lex->next());
-        int qq = 0;
+        delete (lex);
+        delete (stmt);
     }
-    finish = clock();
-    auto dur = finish-start;
-    printf("%d", dur);
+    printf("total: %d\n", clock() - start);
     return 0;
 }

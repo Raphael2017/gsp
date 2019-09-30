@@ -26,7 +26,7 @@ namespace GSP {
 
     class AstSelectStmt : public IObject {
     public:
-        AstSelectStmt();
+        AstSelectStmt(AstWithClause *with_clause, AstQueryExpressionBody *query_expression_body, const AstOrderByItems& order_by_items);
         ~AstSelectStmt() ;
         void                    SetWithClause(AstWithClause *with_clasue);
         AstWithClause          *GetWithClause();
@@ -36,14 +36,14 @@ namespace GSP {
         AstQueryExpressionBody *GetBody();
     private:
         AstWithClause                   *_with_clasue;      /* null means no with clause */
-        std::vector<AstOrderByItem*>     _order_by_items;  /* size 0 means no order by */
         AstQueryExpressionBody          *_query_expression_body;
+        std::vector<AstOrderByItem*>     _order_by_items;  /* size 0 means no order by */
     };
 
-    class AstWithClause : public IObject {
+    class AstWithClause {
     public:
         enum REC_TYPE { NIL_RECURSIVE, RECURSIVE };
-        AstWithClause();
+        AstWithClause(REC_TYPE rec_type, const AstCommonTableExprs& ctes);
         ~AstWithClause();
         void        SetRecType(REC_TYPE rec_type);
         REC_TYPE    GetRecType();
@@ -54,9 +54,9 @@ namespace GSP {
         AstCommonTableExprs                 _ctes;
     };
 
-    class AstCommonTableExpr : public IObject {
+    class AstCommonTableExpr {
     public:
-        AstCommonTableExpr();
+        AstCommonTableExpr(AstId *cte_name);
         ~AstCommonTableExpr();
         void            SetCteName(AstId *cte_name);
         AstId          *GetCteName();
@@ -83,7 +83,7 @@ namespace GSP {
 
     class AstQuerySet : public AstQueryExpressionBody {
     public:
-        AstQuerySet();
+        AstQuerySet(SET_TYPE set_type, AstQueryExpressionBody *left, AstQueryExpressionBody *right);
         ~AstQuerySet();
         void                    SetSetType(SET_TYPE set_type);
         SET_TYPE                GetSetType() override;
@@ -101,7 +101,7 @@ namespace GSP {
     public:
         enum SELECT_TYPE    { SELECT, SELECT_ALL, SELECT_DISTINCT };
         enum GROUP_TYPE     { GROUP_BY, GROUP_BY_ALL, GROUP_BY_DISTINCT };
-        AstQueryPrimary();
+        AstQueryPrimary(SELECT_TYPE select_type);
         ~AstQueryPrimary();
         void                    SetSelectType(SELECT_TYPE select_type);
         SELECT_TYPE             GetSelectType();
@@ -128,9 +128,9 @@ namespace GSP {
         AstSearchCondition             *_having_search_condition;   /* null means NO HAVING */
     };
 
-    class AstProjection : public IObject {
+    class AstProjection {
     public:
-        AstProjection();
+        AstProjection(AstRowExpr *expr, AstId *alias);
         ~AstProjection();
         void            SetExpr(AstRowExpr *expr);
         AstRowExpr     *GetExpr();
@@ -141,10 +141,10 @@ namespace GSP {
         AstId           *_alias;    /* null means no alias */
     };
 
-    class AstOrderByItem : public IObject {
+    class AstOrderByItem {
     public:
         enum ORDER_TYPE { NIL, ASC, DESC };
-        AstOrderByItem();
+        AstOrderByItem(ORDER_TYPE order_type, AstRowExpr *expr);
         ~AstOrderByItem();
         void            SetOrderItem(ORDER_TYPE order_type, AstRowExpr *row_expr);
         ORDER_TYPE      GetOrderType();

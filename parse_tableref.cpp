@@ -126,30 +126,28 @@ namespace GSP {
                 delete (tr);
                 return nullptr;
             }
-            tr = new AstTableJoin;
-            dynamic_cast<AstTableJoin*>(tr)->SetJoinType(join);
-            dynamic_cast<AstTableJoin*>(tr)->SetLeft(left);
             AstTableRef *right = parse_table_primary(lex, e);
             if (e->_code != ParseException::SUCCESS) {
-                delete (tr);
+                delete (left);
                 return nullptr;
             }
-            if (join == AstTableRef::CROSS_JOIN || join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN) {
-                dynamic_cast<AstTableJoin*>(tr)->SetRight(right);
+            if (join == AstTableRef::CROSS_JOIN || (join >= AstTableRef::NATURAL_JOIN && join <= AstTableRef::NATURAL_INNER_JOIN)) {
+                tr = new AstTableJoin(join, left, right, nullptr);
             } else {
-                dynamic_cast<AstTableJoin*>(tr)->SetRight(right);
                 if (lex->token()->type() != ON) {
-                    delete (tr);
+                    delete (left);
+                    delete (right);
                     e->SetFail(ON, lex);
                     return nullptr;
                 }
                 lex->next();
                 AstSearchCondition *search_condition = parse_search_condition(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
-                    delete (tr);
+                    delete (left);
+                    delete (right);
                     return nullptr;
                 }
-                dynamic_cast<AstTableJoin*>(tr)->SetOn(search_condition);
+                tr = new AstTableJoin(join, left, right, search_condition);
             }
         }
         return tr;
@@ -190,16 +188,24 @@ namespace GSP {
                     }
                     lex->next();
                 }
-                AstSubQueryTableRef *tr = new AstSubQueryTableRef;
-                tr->SetQuery(stmt, id, cols);
-                return tr;
+                return new AstSubQueryTableRef(stmt, id, cols);
             } else {        /* backtrack */
-                delete (lex_c);
+                if (e->_code == ParseException::SUCCESS && lex_c->token()->type() != RPAREN) {
+                    e->SetFail(RPAREN, lex_c);
+                }
+                ParseException e1 = *e;
+                auto pos = lex_c->cur_pos();
                 e->_code = ParseException::SUCCESS; e->_detail = "";
                 tr = parse_tabelref(lex, e);
                 if (e->_code != ParseException::SUCCESS) {
+                    if (lex->cur_pos() < pos) {
+                        *e = e1;
+                        lex->recover(lex_c);
+                    }
+                    delete (lex_c);
                     return nullptr;
                 }
+                delete (lex_c);
                 if (lex->token()->type() != RPAREN) {
                     delete (tr);
                     e->SetFail(RPAREN, lex);
@@ -227,9 +233,7 @@ namespace GSP {
             else if (lex->token()->type() == ID) {
                 alias = parse_id(lex, e);
             }
-            AstRelation *r = new AstRelation;
-            r->SetRelationAndAlias(ids, alias);
-            return r;
+            return new AstRelation(ids, alias);
         }
     }
 
