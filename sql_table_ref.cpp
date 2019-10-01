@@ -88,7 +88,7 @@ namespace GSP {
         return SUBQUERY;
     }
 
-    void AstSubQueryTableRef::SetQuery(AstSelectStmt *subquery, AstId *alias, const std::vector<AstId*>& col_alias) {
+    void AstSubQueryTableRef::SetQuery(AstSelectStmt *subquery, AstId *alias, const AstIds& col_alias) {
         _subquery = subquery; _alias = alias; _col_alias = col_alias;
     }
 

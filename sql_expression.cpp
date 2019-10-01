@@ -136,7 +136,7 @@ namespace GSP {
 
     bool AstColumnRef::IsWild() { return _is_use_wild; }
 
-    const std::vector<AstId*>& AstColumnRef::GetColumn() { return _ids; }
+    const AstIds& AstColumnRef::GetColumn() { return _ids; }
 
     /* AstFuncCall */
     AstFuncCall::AstFuncCall(const AstIds& func_name, AstExprList *params) : AstExpr(EXPR_FUNC), _func_name(func_name), _params(params) {}

@@ -49,8 +49,8 @@ namespace GSP {
             this->pos_ = other->pos_;
             this->line_ = other->line_;
             this->col_ = other->col_;
-            this->keyword_ = other->keyword_;
-            this->keyword1_ = other->keyword1_;
+            //this->keyword_ = other->keyword_;
+            //this->keyword1_ = other->keyword1_;
         }
 
         virtual void next() override { scanf(); }
@@ -62,9 +62,10 @@ namespace GSP {
         virtual unsigned int cur_pos() const override { return pos_; }
 
         virtual const std::string &get_token_type_name(TokenType token_type) const override {
-            auto f = keyword1_.find(token_type);
-            assert(f != keyword1_.end());
-            return f->second;
+            //auto f = keyword1_.find(token_type);
+            //assert(f != keyword1_.end());
+            //return f->second;
+            return "";
         }
 
 
@@ -414,8 +415,8 @@ namespace GSP {
         unsigned int pos_;
         unsigned int line_;
         unsigned int col_;
-        std::map<std::string, TokenType> keyword_;
-        std::map<TokenType, std::string> keyword1_;
+        static const std::map<std::string, TokenType> keyword_;
+        static std::map<TokenType, std::string> keyword1_;
         //std::vector<TokenType> hash_; /* todo */
     };
 
@@ -423,7 +424,7 @@ namespace GSP {
 
 
 /* todo */
-    Lex::Lex(const char *sql) : sql_(sql), pos_(0), line_(0), col_(0), keyword_{
+const std::map<std::string, TokenType> Lex::    keyword_{
             {"ALL",       ALL},
             {"AND",       AND},
             {"ANY",       ANY},
@@ -494,7 +495,9 @@ namespace GSP {
             {"WHEN",      WHEN},
             {"WHERE",     WHERE},
             {"WITH",      WITH}
-    } {
+    };
+    Lex::Lex(const char *sql) : sql_(sql), pos_(0), line_(0), col_(0)
+    {
 
     }
 

@@ -155,7 +155,7 @@ int main() {
           "ORDER BY total_count DESC;\n"
           "";
 
-    sql = "SELECT * FROM table1 WHERE NOT EXISTS (SELECT * FROM table2 WHERE table1.field1=table2.field1);";
+    //sql = "SELECT * FROM table1 WHERE NOT EXISTS (SELECT * FROM table2 WHERE table1.field1=table2.field1);";
     //sql = "SELECT (1+2)*3 FROM MN WHERE (SELECT 1 FROM P) > 0";
 
     //sql = "SELECT a FROM B WHERE \"mmp\" = (SELECT * FROM C GROUP BY mmm ORDER BY qwe)";
@@ -168,6 +168,15 @@ int main() {
    // sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
    //       " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
 
+   sql = "SELECT CNTRYCODE, CO1UNT(*) AS NUMCUST, S1UM(C_ACCTBAL) AS TOTACCTBAL\n"
+         "FROM (SELECT SUBSTRING(C_PHONE,1,2) AS CNTRYCODE, C_ACCTBAL\n"
+         " FROM CUSTOMER WHERE SUBSTRING(C_PHONE,1,2) IN ('13', '31', '23', '29', '30', '18', '17') AND\n"
+         " C_ACCTBAL > (SELECT AV1G(C_ACCTBAL) FROM CUSTOMER WHERE C_ACCTBAL > 0.00 AND\n"
+         "  SUBSTRING(C_PHONE,1,2) IN ('13', '31', '23', '29', '30', '18', '17')) AND\n"
+         " NOT EXISTS ( SELECT * FROM ORDERS WHERE O_CUSTKEY = C_CUSTKEY)) AS CUSTSALE\n"
+         "GROUP BY CNTRYCODE\n"
+         "ORDER BY CNTRYCODE;";
+   
     {
         std::string condition = "M>3 OR (M<-1 AND N>3)";
         GSP::ILex *lex = GSP::make_lex(condition.c_str());

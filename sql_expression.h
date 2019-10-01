@@ -172,7 +172,7 @@ namespace GSP {
         ~AstColumnRef();
         void                        SetColumn(const AstIds& ids, bool is_wild);
         bool                        IsWild();
-        const std::vector<AstId*>&  GetColumn();
+        const AstIds&  GetColumn();
     private:
         AstIds  _ids;
         bool    _is_use_wild;

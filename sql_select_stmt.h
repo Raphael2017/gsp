@@ -37,7 +37,7 @@ namespace GSP {
     private:
         AstWithClause                   *_with_clasue;      /* null means no with clause */
         AstQueryExpressionBody          *_query_expression_body;
-        std::vector<AstOrderByItem*>     _order_by_items;  /* size 0 means no order by */
+        AstOrderByItems                  _order_by_items;  /* size 0 means no order by */
     };
 
     class AstWithClause {
@@ -66,7 +66,7 @@ namespace GSP {
         AstSelectStmt  *GetQuery();
     private:
         AstId                   *_cte_name;
-        std::vector<AstId*>      _cte_columns;  /* size 0 means no alias */
+        AstIds                   _cte_columns;  /* size 0 means no alias */
         AstSelectStmt           *_query;
     };
 
