@@ -124,6 +124,11 @@ namespace GSP {
 
     void AstConstantValue::SetValue(const std::string& value) { u._other_data = strdup(value.c_str()); }
 
+    int  AstConstantValue::GetValueAsInt() {
+        return atoi(u._other_data);
+    }
+
+
     /* AstColumnRef */
     AstColumnRef::AstColumnRef(const AstIds& ids, bool use_wild) : AstExpr(EXPR_COLUMN_REF), _ids(ids), _is_use_wild(use_wild) {}
 

@@ -7,10 +7,21 @@
 #include "sql_table_ref.h"
 #include "sql_expression.h"
 #include <time.h>
+#include <map>
+#include <stack>
 
-enum BOOL_CONSTANT { BC_TRUE, BC_FALSE, BC_UNKNOWN };
+enum BOOL_CONSTANT { BC_TRUE = 1, BC_FALSE=0, BC_UNKNOWN=-1 };
 
 enum OPER { OP_OR, OP_AND, OP_GT, OP_LT };
+
+const char* op2str(OPER op) {
+    switch (op) {
+        case OP_OR: return "OR";
+        case OP_AND: return "AND";
+        case OP_GT: return ">";
+        case OP_LT: return "<";
+    }
+}
 
 unsigned int make_new_label() {
     static unsigned int i = 1;
@@ -32,6 +43,53 @@ struct Instruction {
     } u;
 };
 
+void dump(const std::vector<Instruction*>& instructions) {
+    for (auto it : instructions) {
+        switch (it->_type) {
+            case Instruction::PUSH_CONSTANT: {
+                printf("     PUSH_CONSTANT %d\n", it->u._constant);
+            } break;
+            case Instruction::PUSH_VARIABLE: {
+                printf("     PUSH VARIABLE %s\n", it->u._var_name);
+            } break;
+            case Instruction::EXEC_OPERATOR: {
+                printf("     EXEC_OPERATOR %s\n", op2str(it->u._op));
+            } break;
+            case Instruction::JUMP: {
+                printf("     JUMP      LAB%d\n", it->u._jump_label);
+            } break;
+            case Instruction::C_JUMP: {
+                printf("     CJUMP  %d LAB%d\n", it->u._c_jump._when, it->u._c_jump._c_jump_label);
+            } break;
+            case Instruction::LAB: {
+                printf("LAB%d\n", it->u._lab);
+            } break;
+            default: assert(false);
+        }
+    }
+}
+
+Instruction *make_push_var(const char *var) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::PUSH_VARIABLE;
+    ins->u._var_name = strdup(var);
+    return ins;
+}
+
+Instruction *make_push_int(int d) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::PUSH_CONSTANT;
+    ins->u._constant = d;
+    return ins;
+}
+
+Instruction *make_exec_op(OPER op) {
+    Instruction *ins = new Instruction;
+    ins->_type = Instruction::EXEC_OPERATOR;
+    ins->u._op = op;
+    return ins;
+}
+
 Instruction *make_c_jump(BOOL_CONSTANT when, unsigned int label) {
     Instruction *ins = new Instruction;
     ins->_type = Instruction::C_JUMP;
@@ -47,17 +105,12 @@ Instruction *make_jump(unsigned int label) {
     return ins;
 }
 
-Instruction *make_exec_op(OPER op) {
-    Instruction *ins = new Instruction;
-    ins->_type = Instruction::EXEC_OPERATOR;
-    ins->u._op = op;
-    return ins;
-}
 
 Instruction *make_lb(unsigned int label) {
     Instruction *ins = new Instruction;
     ins->_type = Instruction::LAB;
     ins->u._lab = label;
+    return ins;
 }
 
 void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& instructions) {
@@ -71,9 +124,9 @@ void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& in
             translate(or_expr->GetRight(), instructions);
             instructions.push_back(make_exec_op(OP_OR));
             unsigned int lab2 = make_new_label();
-            instructions.push_back(make_jump(lab2));
+            //instructions.push_back(make_jump(lab2));
             instructions.push_back(make_lb(lab1));
-            instructions.push_back(make_lb(lab2));
+            //instructions.push_back(make_lb(lab2));
         } break;
         case GSP::AstSearchCondition::AND: {
             GSP::AstBinaryOpExpr *or_expr = dynamic_cast<GSP::AstBinaryOpExpr*>(condition);
@@ -84,13 +137,197 @@ void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& in
             translate(or_expr->GetRight(), instructions);
             instructions.push_back(make_exec_op(OP_AND));
             unsigned int lab2 = make_new_label();
-            instructions.push_back(make_jump(lab2));
+            //instructions.push_back(make_jump(lab2));
             instructions.push_back(make_lb(lab1));
-            instructions.push_back(make_lb(lab2));
+            //instructions.push_back(make_lb(lab2));
         } break;
-        case GSP::AstSearchCondition::COMP_GT: {} break;
-        case GSP::AstSearchCondition::COMP_LT: {} break;
+        case GSP::AstSearchCondition::COMP_GT: {
+            GSP::AstBinaryOpExpr *gt_expr = dynamic_cast<GSP::AstBinaryOpExpr*>(condition);
+            translate(gt_expr->GetLeft(), instructions);
+            translate(gt_expr->GetRight(), instructions);
+            instructions.push_back(make_exec_op(OP_GT));
+        } break;
+        case GSP::AstSearchCondition::COMP_LT: {
+            GSP::AstBinaryOpExpr *gt_expr = dynamic_cast<GSP::AstBinaryOpExpr*>(condition);
+            translate(gt_expr->GetLeft(), instructions);
+            translate(gt_expr->GetRight(), instructions);
+            instructions.push_back(make_exec_op(OP_LT));
+        } break;
+        case GSP::AstSearchCondition::EXPR_COLUMN_REF: {
+            const GSP::AstIds& col = dynamic_cast<GSP::AstColumnRef*>(condition)->GetColumn();
+            GSP::AstId *id = col[0];
+            instructions.push_back(make_push_var(id->GetId().c_str()));
+        } break;
+        case GSP::AstSearchCondition::C_NUMBER: {
+            GSP::AstConstantValue *value = dynamic_cast<GSP::AstConstantValue*>(condition);
+            instructions.push_back(make_push_int(value->GetValueAsInt()));
+        } break;
         default: { assert(false); } break;
+    }
+}
+
+void link(std::vector<Instruction*>& instructions) {
+    std::map<int, int> labs; // labid, lineid
+    for (int i = instructions.size()-1; i > -1; --i) {
+        if (instructions[i]->_type == Instruction::LAB) labs[instructions[i]->u._lab] = i;
+        if (instructions[i]->_type == Instruction::C_JUMP) {
+            auto fd = labs.find(instructions[i]->u._c_jump._c_jump_label);
+            assert(fd != labs.end());
+            instructions[i]->u._c_jump._c_jump_label = fd->second;
+        }
+    }
+}
+const std::string M = "M";
+const std::string N = "N";
+
+#define M_V -5
+#define N_V 10
+
+#define MN_CND "M>3 OR (M<0 AND N>3) AND (N < 100 OR M > 10 OR M > 109 AND N < 231) "
+
+int value(std::vector<Instruction*>& instructions) {
+    std::stack<int> stk;
+
+    for (int i = 0; i < instructions.size();) {
+        Instruction *it = instructions[i];
+        switch (it->_type) {
+            case Instruction::LAB: { ++i; } break;
+            case Instruction::PUSH_VARIABLE: {
+
+                if (it->u._var_name == M)
+                    stk.push(M_V);
+                else if (it->u._var_name == N)
+                    stk.push(N_V);
+                ++i;
+            } break;
+            case Instruction::PUSH_CONSTANT: {
+                stk.push(it->u._constant);
+                ++i;
+            } break;
+            case Instruction::C_JUMP: {
+                int top = stk.top();
+                if (top == it->u._c_jump._when) {
+                    i = it->u._c_jump._c_jump_label;
+                }
+                else
+                    ++i;
+            } break;
+            case Instruction::EXEC_OPERATOR: {
+                int right = stk.top(); stk.pop();
+                int left = stk.top(); stk.pop();
+                switch (it->u._op) {
+                    case OP_LT: {
+                        if (left == BC_UNKNOWN) {
+                            stk.push(BC_UNKNOWN);
+                            ++i;
+                            continue;
+                        }
+                        stk.push(left < right ? BC_TRUE : BC_FALSE);
+                        ++i;
+                    } break;
+                    case OP_GT: {
+                        if (left == BC_UNKNOWN) {
+                            stk.push(BC_UNKNOWN);
+                            ++i;
+                            continue;
+                        }
+                        stk.push(left > right ? BC_TRUE : BC_FALSE);
+                        ++i;
+                    } break;
+                    case OP_AND: {
+                        if (left == BC_FALSE || right == BC_FALSE) {
+                            stk.push(BC_FALSE);
+                            ++i;
+                            continue;
+                        } else if (left == BC_UNKNOWN || right == BC_UNKNOWN) {
+                            stk.push(BC_UNKNOWN);
+                            ++i;
+                            continue;
+                        } else {
+                            stk.push(BC_TRUE);
+                            ++i;
+                            continue;
+                        }
+                    } break;
+                    case OP_OR: {
+                        if (left == BC_TRUE || right == BC_TRUE) {
+                            stk.push(BC_TRUE);
+                            ++i;
+                            continue;
+                        } else if (left == BC_UNKNOWN || right == BC_UNKNOWN) {
+                            stk.push(BC_UNKNOWN);
+                            ++i;
+                            continue;
+                        } else {
+                            stk.push(BC_FALSE);
+                            ++i;
+                            continue;
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+    assert(stk.size() == 1);
+    return stk.top();
+}
+
+int value1(GSP::AstSearchCondition *condition) {
+    switch (condition->GetExprType()) {
+        case GSP::AstSearchCondition::OR: {
+            auto or_exp = dynamic_cast<GSP::AstBinaryOpExpr *>(condition);
+            int left = value1(or_exp->GetLeft());
+            if (left == BC_TRUE) return BC_TRUE;
+            int right = value1(or_exp->GetRight());
+            if (right == BC_TRUE) return BC_TRUE;
+            if (left == BC_UNKNOWN || right == BC_UNKNOWN) return BC_UNKNOWN;
+            return false;
+        }
+            break;
+        case GSP::AstSearchCondition::AND: {
+            auto and_exp = dynamic_cast<GSP::AstBinaryOpExpr *>(condition);
+            int left = value1(and_exp->GetLeft());
+            if (left == BC_FALSE) return BC_FALSE;
+            int right = value1(and_exp->GetRight());
+            if (right == BC_FALSE) return BC_FALSE;
+            if (left == BC_UNKNOWN || right == BC_UNKNOWN) return BC_UNKNOWN;
+            return true;
+        }
+            break;
+        case GSP::AstSearchCondition::COMP_GT: {
+            auto predicate = dynamic_cast<GSP::AstBinaryOpExpr *>(condition);
+            int left = value1(predicate->GetLeft());
+            if (left == BC_UNKNOWN) return BC_UNKNOWN;
+            int right = value1(predicate->GetRight());
+            if (left > right) return BC_TRUE;
+            return BC_FALSE;
+        }
+            break;
+        case GSP::AstSearchCondition::COMP_LT: {
+            auto predicate = dynamic_cast<GSP::AstBinaryOpExpr *>(condition);
+            int left = value1(predicate->GetLeft());
+            if (left == BC_UNKNOWN) return BC_UNKNOWN;
+            int right = value1(predicate->GetRight());
+            if (left < right) return BC_TRUE;
+            return BC_FALSE;
+        }
+            break;
+        case GSP::AstSearchCondition::EXPR_COLUMN_REF: {
+            const GSP::AstIds &col = dynamic_cast<GSP::AstColumnRef *>(condition)->GetColumn();
+            GSP::AstId *id = col[0];
+            if (id->GetId() == "M") return M_V;
+            else if (id->GetId() == "N") return N_V;
+        }
+            break;
+        case GSP::AstSearchCondition::C_NUMBER: {
+            return dynamic_cast<GSP::AstConstantValue *>(condition)->GetValueAsInt();
+        }
+            break;
+        default: {
+            assert(false);
+        }
+            break;
     }
 }
 
@@ -168,6 +405,7 @@ int main() {
    // sql = "SELECT * FROM MY_TABLE1, MY_TABLE2, (SELECT * FROM MY_TABLE3) P LEFT OUTER JOIN MY_TABLE4 ON mm=p"
    //       " WHERE ID = (SELECT MA1X(ID) FROM MY_TABLE5) AND ID2 IN (SELECT * FROM MY_TABLE6)";
 
+   /*
    sql = "SELECT CNTRYCODE, CO1UNT(*) AS NUMCUST, S1UM(C_ACCTBAL) AS TOTACCTBAL\n"
          "FROM (SELECT SUBSTRING(C_PHONE,1,2) AS CNTRYCODE, C_ACCTBAL\n"
          " FROM CUSTOMER WHERE SUBSTRING(C_PHONE,1,2) IN ('13', '31', '23', '29', '30', '18', '17') AND\n"
@@ -175,22 +413,53 @@ int main() {
          "  SUBSTRING(C_PHONE,1,2) IN ('13', '31', '23', '29', '30', '18', '17')) AND\n"
          " NOT EXISTS ( SELECT * FROM ORDERS WHERE O_CUSTKEY = C_CUSTKEY)) AS CUSTSALE\n"
          "GROUP BY CNTRYCODE\n"
-         "ORDER BY CNTRYCODE;";
+         "ORDER BY CNTRYCODE;";*/
    
     {
-        std::string condition = "M>3 OR (M<-1 AND N>3)";
+
+
+
+        std::string condition = MN_CND;
+
+
+        clock_t start = clock();
         GSP::ILex *lex = GSP::make_lex(condition.c_str());
         lex->next();
         GSP::ParseException e;
         GSP::AstSearchCondition *search_condition = GSP::parse_search_condition(lex, &e);
+        //printf("total: %d\n", clock() - start);
 
+        std::vector<Instruction*> instructions;
+        translate(search_condition, instructions);
+        link(instructions);
+        dump(instructions);
 
+        //assert(1==0);
+        assert(value1(search_condition) == value(instructions));
 
+#if 0
+        start = clock();
+        for (int i = 0; i < 100000; ++i) {
+            int v1 = value1(search_condition);
+            //int v = value(instructions);
+            //assert(v == v1);
+        }
+        printf("total1: %d\n", clock() - start);
+#else
+        start = clock();
+        for (int i = 0; i < 100000; ++i) {
+            //int v1 = value1(search_condition);
+            int v = value(instructions);
+            //assert(v == v1);
+        }
+        printf("total: %d\n", clock() - start);
+#endif
 
 
 
         delete (lex);
         delete (search_condition);
+        return 0;
     }
 
 

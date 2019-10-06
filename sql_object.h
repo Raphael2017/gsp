@@ -32,6 +32,7 @@ namespace GSP {
     public:
         AstId(const std::string& id) : _id(id) {}
         void SetId(const std::string& id) { _id = id; }
+        const std::string& GetId() { return _id; }
     private:
         std::string     _id;
     };

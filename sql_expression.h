@@ -159,6 +159,7 @@ namespace GSP {
         ~AstConstantValue();
         void SetValue(int data);
         void SetValue(const std::string& value);
+        int  GetValueAsInt();
     private:
         union {
             int _int_data;
