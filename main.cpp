@@ -123,7 +123,7 @@ void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& in
             instructions.push_back(cjmp);
             translate(or_expr->GetRight(), instructions);
             instructions.push_back(make_exec_op(OP_OR));
-            unsigned int lab2 = make_new_label();
+            //unsigned int lab2 = make_new_label();
             //instructions.push_back(make_jump(lab2));
             instructions.push_back(make_lb(lab1));
             //instructions.push_back(make_lb(lab2));
@@ -136,7 +136,7 @@ void translate(GSP::AstSearchCondition *condition, std::vector<Instruction*>& in
             instructions.push_back(cjmp);
             translate(or_expr->GetRight(), instructions);
             instructions.push_back(make_exec_op(OP_AND));
-            unsigned int lab2 = make_new_label();
+            //unsigned int lab2 = make_new_label();
             //instructions.push_back(make_jump(lab2));
             instructions.push_back(make_lb(lab1));
             //instructions.push_back(make_lb(lab2));
@@ -331,6 +331,41 @@ int value1(GSP::AstSearchCondition *condition) {
     }
 }
 
+void dump(GSP::AstSearchCondition *condition, int lvl = 0) {
+    for (int i = 0; i < lvl; ++i)
+        printf("   ");
+    switch (condition->GetExprType()) {
+        case GSP::AstSearchCondition::OR:
+        case GSP::AstSearchCondition::AND:
+        case GSP::AstSearchCondition::COMP_GT:
+        case GSP::AstSearchCondition::COMP_LT: {
+            switch (condition->GetExprType()){
+                case GSP::AstSearchCondition::OR: printf("|-OR\n"); break;
+                case GSP::AstSearchCondition::AND: printf("|-AND\n"); break;
+                case GSP::AstSearchCondition::COMP_GT: printf("|-GT\n"); break;
+                case GSP::AstSearchCondition::COMP_LT: printf("|-LT\n"); break;
+            }
+            dump(dynamic_cast<GSP::AstBinaryOpExpr*>(condition)->GetLeft(), lvl+1);
+            dump(dynamic_cast<GSP::AstBinaryOpExpr*>(condition)->GetRight(), lvl+1);
+        }
+            break;
+        case GSP::AstSearchCondition::EXPR_COLUMN_REF: {
+            const GSP::AstIds &col = dynamic_cast<GSP::AstColumnRef *>(condition)->GetColumn();
+            GSP::AstId *id = col[0];
+            printf("|-%s\n", id->GetId().c_str());
+        }
+            break;
+        case GSP::AstSearchCondition::C_NUMBER: {
+            printf("|-%d\n", dynamic_cast<GSP::AstConstantValue *>(condition)->GetValueAsInt());
+        }
+            break;
+        default: {
+            assert(false);
+        }
+            break;
+    }
+}
+
 int main() {
     std::string sql = "SELECT a FROM (A JOIN B ON m=n), (SELECT m FROM PP) QQ";
     sql = "SELECT a FROM (((SELECT m FROM AA)) UNION SELECT kp) CC";
@@ -428,7 +463,7 @@ int main() {
         GSP::ParseException e;
         GSP::AstSearchCondition *search_condition = GSP::parse_search_condition(lex, &e);
         //printf("total: %d\n", clock() - start);
-
+        dump(search_condition);
         std::vector<Instruction*> instructions;
         translate(search_condition, instructions);
         link(instructions);
