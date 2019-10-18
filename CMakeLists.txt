@@ -13,4 +13,5 @@ add_executable(gsp main.cpp
         parse_exception.cpp
         sql_select_stmt.cpp
         sql_table_ref.cpp
-        sql_expression.cpp)
+        sql_expression.cpp
+        translate.cpp)

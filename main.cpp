@@ -9,6 +9,8 @@
 #include <time.h>
 #include <map>
 #include <stack>
+#include "relational_algebra.h"
+#include "translate.h"
 
 enum BOOL_CONSTANT { BC_TRUE = 1, BC_FALSE=0, BC_UNKNOWN=-1 };
 
@@ -335,11 +337,13 @@ void dump(GSP::AstSearchCondition *condition, int lvl = 0) {
     for (int i = 0; i < lvl; ++i)
         printf("   ");
     switch (condition->GetExprType()) {
+        case GSP::AstSearchCondition::COMP_EQ:
         case GSP::AstSearchCondition::OR:
         case GSP::AstSearchCondition::AND:
         case GSP::AstSearchCondition::COMP_GT:
         case GSP::AstSearchCondition::COMP_LT: {
             switch (condition->GetExprType()){
+                case GSP::AstSearchCondition::COMP_EQ: printf("|-EQ\n"); break;
                 case GSP::AstSearchCondition::OR: printf("|-OR\n"); break;
                 case GSP::AstSearchCondition::AND: printf("|-AND\n"); break;
                 case GSP::AstSearchCondition::COMP_GT: printf("|-GT\n"); break;
@@ -351,14 +355,24 @@ void dump(GSP::AstSearchCondition *condition, int lvl = 0) {
             break;
         case GSP::AstSearchCondition::EXPR_COLUMN_REF: {
             const GSP::AstIds &col = dynamic_cast<GSP::AstColumnRef *>(condition)->GetColumn();
-            GSP::AstId *id = col[0];
-            printf("|-%s\n", id->GetId().c_str());
+            std::string id;
+            for (int i = 0; i < col.size(); ++i) {
+                if (i == 0) {
+                    id += col[i]->GetId();
+                } else {
+                    id += "." + col[i]->GetId();
+                }
+            }
+            printf("|-%s\n", id.c_str());
         }
             break;
         case GSP::AstSearchCondition::C_NUMBER: {
             printf("|-%d\n", dynamic_cast<GSP::AstConstantValue *>(condition)->GetValueAsInt());
         }
             break;
+        case GSP::AstSearchCondition::C_STRING: {
+            printf("|-%s\n", dynamic_cast<GSP::AstConstantValue *>(condition)->GetValue());
+        } break;
         default: {
             assert(false);
         }
@@ -456,7 +470,6 @@ int main() {
 
         std::string condition = MN_CND;
 
-
         clock_t start = clock();
         GSP::ILex *lex = GSP::make_lex(condition.c_str());
         lex->next();
@@ -466,8 +479,9 @@ int main() {
         dump(search_condition);
         std::vector<Instruction*> instructions;
         translate(search_condition, instructions);
-        link(instructions);
         dump(instructions);
+        link(instructions);
+
 
         //assert(1==0);
         assert(value1(search_condition) == value(instructions));
@@ -482,7 +496,7 @@ int main() {
         printf("total1: %d\n", clock() - start);
 #else
         start = clock();
-        for (int i = 0; i < 100000; ++i) {
+        for (int i = 0; i < 10; ++i) {
             //int v1 = value1(search_condition);
             int v = value(instructions);
             //assert(v == v1);
@@ -494,12 +508,69 @@ int main() {
 
         delete (lex);
         delete (search_condition);
-        return 0;
+        //return 0;
     }
 
+    sql = "select cou1nt(*) \n"
+          "from ((select distinct c_last_name, c_first_name, d_date\n"
+          "       from store_sales, date_dim, customer\n"
+          "       where store_sales.ss_sold_date_sk = date_dim.d_date_sk\n"
+          "         and store_sales.ss_customer_sk = customer.c_customer_sk\n"
+          "         and d_month_seq between 1202 and 1202+11)\n"
+          "       except\n"
+          "      (select distinct c_last_name, c_first_name, d_date\n"
+          "       from catalog_sales, date_dim, customer\n"
+          "       where catalog_sales.cs_sold_date_sk = date_dim.d_date_sk\n"
+          "         and catalog_sales.cs_bill_customer_sk = customer.c_customer_sk\n"
+          "         and d_month_seq between 1202 and 1202+11)\n"
+          "       except\n"
+          "      (select distinct c_last_name, c_first_name, d_date\n"
+          "       from web_sales, date_dim, customer\n"
+          "       where web_sales.ws_sold_date_sk = date_dim.d_date_sk\n"
+          "         and web_sales.ws_bill_customer_sk = customer.c_customer_sk\n"
+          "         and d_month_seq between 1202 and 1202+11)\n"
+          ") cool_cust";
 
+    sql = "select i_brand_id brand_id, i_brand brand,t_hour,t_minute,\n"
+          " \tsu1m(ext_price) ext_price\n"
+          " from item, (select ws_ext_sales_price as ext_price, \n"
+          "                        ws_sold_date_sk as sold_date_sk,\n"
+          "                        ws_item_sk as sold_item_sk,\n"
+          "                        ws_sold_time_sk as time_sk  \n"
+          "                 from web_sales,date_dim\n"
+          "                 where d_date_sk = ws_sold_date_sk\n"
+          "                   and d_moy=12\n"
+          "                   and d_year=2002\n"
+          "                 union all\n"
+          "                 select cs_ext_sales_price as ext_price,\n"
+          "                        cs_sold_date_sk as sold_date_sk,\n"
+          "                        cs_item_sk as sold_item_sk,\n"
+          "                        cs_sold_time_sk as time_sk\n"
+          "                 from catalog_sales,date_dim\n"
+          "                 where d_date_sk = cs_sold_date_sk\n"
+          "                   and d_moy=12\n"
+          "                   and d_year=2002\n"
+          "                 union all\n"
+          "                 select ss_ext_sales_price as ext_price,\n"
+          "                        ss_sold_date_sk as sold_date_sk,\n"
+          "                        ss_item_sk as sold_item_sk,\n"
+          "                        ss_sold_time_sk as time_sk\n"
+          "                 from store_sales,date_dim\n"
+          "                 where d_date_sk = ss_sold_date_sk\n"
+          "                   and d_moy=12\n"
+          "                   and d_year=2002\n"
+          "                 ) tmp,time_dim\n"
+          " where\n"
+          "   sold_item_sk = i_item_sk\n"
+          "   and i_manager_id=1\n"
+          "   and time_sk = t_time_sk\n"
+          "   and (t_meal_time = 'breakfast' or t_meal_time = 'dinner')\n"
+          " group by i_brand, i_brand_id,t_hour,t_minute\n"
+          " order by ext_price desc, i_brand_id\n"
+          " ;";
+    sql = "SELECT 5-1 FROM dummy";
     clock_t start = clock();
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 1; ++i) {
         GSP::ILex *lex = GSP::make_lex(sql.c_str());
         GSP::ParseException e;
         lex->next();

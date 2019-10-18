@@ -1,0 +1,141 @@
+According to the document "Prefilter function PRD" and the feedback from Danial
+The target is:
+1. Retrieve Policys                                     ( Functional requirement )
+2. Pre-decision Making Using Limited Attribute Values   ( Functional requirement )
+3. Make the pre-decision process as fast as possible    ( Performance requirement )
+
+define 3 types of boolean value
+{ B_TRUE, B_FALSE, B_UNKNOWN }
+Adding several computational rules for B_UNKNOWN
+1. B_UNKNOWN === B_UNKNOWN AND B_TRUE
+2. B_FALSE   === B_UNKNOWN AND B_FALSE
+3. B_UNKNOWN === B_UNKNOWN OR B_FALSE
+4. B_TRUE    === B_UNKNOWN OR B_TRUE
+5. B_UNKNOWN === B_UNKNOWN AND B_UNKNOWN
+6. B_UNKNOWN === B_UNKNOWN OR B_UNKNOWN
+7. variablex AND B_UNKNOWN === B_UNKNOWN AND variablex
+8. variablex OR B_UNKNOWN === B_UNKNOWN OR variablex
+
+so Using Limited Attribute Values, we can get the boolean expression's value (B_TRUE/B_FALSE/B_UNKNOWN)
+
+A Policy maybe looks like this  (this is a json format)
+Policy Effect : Deny
+Action Components : open
+Subject Components : emailaddress is james.polk@qapf1.qalab01.nextlabs.com
+Resource Components : /* empty */
+ADVANCED CONDITIONS : resource.spe.url = "sharepoint://**aclinv.aspx" OR
+                        resource.spe.url = "sharepoint://**managefeatures.aspx" OR
+                            resource.spe.url = "sharepoint://**projectsite**flat.aspx"
+
+
+the Equivalent expression is ( Readable format )  SUBJECT_PREDICATE AND ACTION_PREDICATE AND RESOURCE_PREDICATE
+
+(emailaddress = 'james.polk@qapf1.qalab01.nextlabs.com' ) AND (Action = 'open') AND (resource.spe.url = 'sharepoint://**aclinv.aspx' OR
+                                                                                    resource.spe.url = 'sharepoint://**managefeatures.aspx' OR
+                                                                                    resource.spe.url = 'sharepoint://**projectsite**flat.aspx')
+
+the Equivalent abstract syntax tree looks like
+|-AND
+   |-AND
+      |-EQ
+         |-Action
+         |-open
+      |-EQ
+         |-emailaddress
+         |-james.polk@qapf1.qalab01.nextlabs.com
+   |-OR
+      |-OR
+         |-EQ
+            |-resource.spe.url
+            |-sharepoint://**aclinv.aspx
+         |-EQ
+            |-resource.spe.url
+            |-sharepoint://**managefeatures.aspx
+      |-EQ
+         |-resource.spe.url
+         |-sharepoint://**projectsite**flat.aspx
+
+
+for best runtime performance, policy (boolean expression) should be compiled into instructions.
+
+for example,
+string format
+M>3 OR (M<0 AND N>3) AND (N < 100 OR M > 10 OR M > 109 AND N < 231)
+
+abstract syntax tree
+|-OR
+   |-GT
+      |-M
+      |-3
+   |-AND
+      |-AND
+         |-LT
+            |-M
+            |-0
+         |-GT
+            |-N
+            |-3
+      |-OR
+         |-OR
+            |-LT
+               |-N
+               |-100
+            |-GT
+               |-M
+               |-10
+         |-AND
+            |-GT
+               |-M
+               |-109
+            |-LT
+               |-N
+               |-231
+
+stack-based virtual machine
+
+instructions:
+     PUSH VARIABLE M
+     PUSH_CONSTANT 3
+     EXEC_OPERATOR >
+     CJUMP  1 LAB1
+     PUSH VARIABLE M
+     PUSH_CONSTANT 0
+     EXEC_OPERATOR <
+     CJUMP  0 LAB2
+     PUSH VARIABLE N
+     PUSH_CONSTANT 3
+     EXEC_OPERATOR >
+     EXEC_OPERATOR AND
+LAB2
+     CJUMP  0 LAB3
+     PUSH VARIABLE N
+     PUSH_CONSTANT 100
+     EXEC_OPERATOR <
+     CJUMP  1 LAB4
+     PUSH VARIABLE M
+     PUSH_CONSTANT 10
+     EXEC_OPERATOR >
+     EXEC_OPERATOR OR
+LAB4
+     CJUMP  1 LAB5
+     PUSH VARIABLE M
+     PUSH_CONSTANT 109
+     EXEC_OPERATOR >
+     CJUMP  0 LAB6
+     PUSH VARIABLE N
+     PUSH_CONSTANT 231
+     EXEC_OPERATOR <
+     EXEC_OPERATOR AND
+LAB6
+     EXEC_OPERATOR OR
+LAB5
+     EXEC_OPERATOR AND
+LAB3
+     EXEC_OPERATOR OR
+LAB1
+
+the abstract syntax tree and the stack-based instructions can be executed to get the same boolean value
+but the stack-based instructions should have the best runtime performance
+
+
+

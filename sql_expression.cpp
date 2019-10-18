@@ -128,6 +128,10 @@ namespace GSP {
         return atoi(u._other_data);
     }
 
+    const char *AstConstantValue::GetValue() {
+        return u._other_data;
+    }
+
 
     /* AstColumnRef */
     AstColumnRef::AstColumnRef(const AstIds& ids, bool use_wild) : AstExpr(EXPR_COLUMN_REF), _ids(ids), _is_use_wild(use_wild) {}

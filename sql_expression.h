@@ -160,6 +160,7 @@ namespace GSP {
         void SetValue(int data);
         void SetValue(const std::string& value);
         int  GetValueAsInt();
+        const char *GetValue();
     private:
         union {
             int _int_data;
