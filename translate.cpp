@@ -9,6 +9,7 @@ namespace GSP {
     RelationAlgebraOperator *translate_query_body(AstQueryExpressionBody *body, TranslateException *e);
     RelationAlgebraOperator *translate_query_set(AstQuerySet *body, TranslateException *e);
     RelationAlgebraOperator *translate_query_primary(AstQueryPrimary *primary, TranslateException *e);
+    RelationAlgebraOperator *translate_table_ref(AstTableRef *table_ref, TranslateException *e);
 
     RelationAlgebraOperator *translate(AstSelectStmt *query, TranslateException *e) {
         /* todo with clause */
@@ -44,6 +45,14 @@ namespace GSP {
     }
 
     RelationAlgebraOperator *translate_query_primary(AstQueryPrimary *primary, TranslateException *e) {
-        
+        assert(primary->GetFrom().size() > 0);
+        RelationAlgebraOperator *r = translate_table_ref(primary->GetFrom()[0], e);
+        for (size_t i = 1; i < primary->GetFrom().size(); ++i) {
+            RelationAlgebraOperator *left = r;
+            RelationAlgebraOperator *right = translate_table_ref(primary->GetFrom()[i], e);
+            auto cross = new RelationAlgebraCrossJoin();
+            cross->SetLeftInput(left); cross->SetRightInput(right);
+            r = cross;
+        }
     }
 }
